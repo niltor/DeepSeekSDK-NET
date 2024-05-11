@@ -1,8 +1,9 @@
-﻿// 读取appsettings.json
-using DeepSeek.Core;
+﻿using DeepSeek.Core;
 using DeepSeek.Core.Models;
 using Microsoft.Extensions.Configuration;
 
+
+// 从appsettings.json读取秘钥
 var builder = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
@@ -23,13 +24,13 @@ if (apiKey == null)
 var client = new DeepSeekClient(apiKey);
 
 #region 示例1：获取模型列表
-var models = await client.ListModelsAsync(new CancellationToken());
-if (models is null)
+var modelResponse = await client.ListModelsAsync(new CancellationToken());
+if (modelResponse is null)
 {
     Console.WriteLine(client.ErrorMsg);
     return;
 }
-foreach (var model in models.Data)
+foreach (var model in modelResponse.Data)
 {
     Console.WriteLine(model);
 }

@@ -147,11 +147,3 @@ public class DeepSeekClient
     }
 
 }
-
-public class ErrorResult
-{
-    public string? Title { get; set; }
-    public string? Detail { get; set; }
-    public int Status { get; set; } = 500;
-    public string? TraceId { get; set; }
-}
