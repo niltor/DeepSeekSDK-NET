@@ -29,7 +29,7 @@ public class DeepSeekClient
     private const string StreamDoneSign = "[DONE]";
 
     private readonly HttpClient Http;
-    public JsonSerializerOptions JsonSerializerOptions { get; init; } = new JsonSerializerOptions()
+    public JsonSerializerOptions JsonSerializerOptions = new()
     {
         ReferenceHandler = ReferenceHandler.IgnoreCycles,
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
