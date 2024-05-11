@@ -28,9 +28,6 @@ public class DeepSeekClient
     /// </summary>
     private const string StreamDoneSign = "[DONE]";
 
-    public const string ChatModel = "deepseek-chat";
-    public const string CoderModel = "deepseek-coder";
-
     private readonly HttpClient Http;
     public JsonSerializerOptions JsonSerializerOptions { get; init; } = new JsonSerializerOptions()
     {
@@ -53,42 +50,61 @@ public class DeepSeekClient
         Http = new HttpClient()
         {
             BaseAddress = new Uri(BaseAddress),
-            Timeout = TimeSpan.FromSeconds(30),
+            Timeout = TimeSpan.FromSeconds(60),
         };
         Http.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Bearer " + apiKey);
     }
 
+    public async Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken)
+    {
+        var response = await Http.GetAsync(ModelsEndpoint, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var res = await response.Content.ReadAsStringAsync();
+            ErrorMsg = response.StatusCode.ToString() + res;
+            return null;
+        }
+        return JsonSerializer.Deserialize<ModelResponse>(await response.Content.ReadAsStringAsync(), JsonSerializerOptions);
+    }
 
     /// <summary>
     /// completion
     /// </summary>
     /// <param name="request"></param>
     /// <returns>错误代码:https://platform.deepseek.com/docs#error-codes</returns>
-    public async Task<ChatResponse?> ChatAsync(ChatRequest request)
+    public async Task<ChatResponse?> ChatAsync(ChatRequest request, CancellationToken cancellationToken)
     {
         request.Stream = false;
         var content = new StringContent(JsonSerializer.Serialize(request, JsonSerializerOptions), Encoding.UTF8, "application/json");
-        var response = await Http.PostAsync(CompletionEndpoint, content);
+
+        var response = await Http.PostAsync(CompletionEndpoint, content, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            ErrorMsg = response.StatusCode.ToString() + response;
+            var res = await response.Content.ReadAsStringAsync();
+            ErrorMsg = response.StatusCode.ToString() + res;
             return null;
         }
         return JsonSerializer.Deserialize<ChatResponse>(await response.Content.ReadAsStringAsync(), JsonSerializerOptions);
     }
 
-    public async Task<IAsyncEnumerable<Choice>> ChatStreamAsync(ChatRequest request, CancellationToken? cancellationToken = null)
+
+    /// <summary>
+    /// 流式输出 
+    /// </summary>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
+    public async Task<IAsyncEnumerable<Choice>?> ChatStreamAsync(ChatRequest request, CancellationToken cancellationToken)
     {
         request.Stream = true;
-        request.Model = ChatModel;
-
         var content = new StringContent(JsonSerializer.Serialize(request, JsonSerializerOptions), Encoding.UTF8, "application/json");
 
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, CompletionEndpoint)
         {
             Content = content,
         };
-        var response = await Http.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead);
+        var response = await Http.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
         if (response.IsSuccessStatusCode)
         {
@@ -126,9 +142,10 @@ public class DeepSeekClient
         {
             var res = await response.Content.ReadAsStringAsync();
             ErrorMsg = res;
-            throw new Exception($"Error in ChatStreamAsync: {ErrorMsg}");
+            return null;
         }
     }
+
 }
 
 public class ErrorResult

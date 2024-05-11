@@ -21,9 +21,10 @@ public class ChatRequest
     public double FrequencyPenalty { get; set; } = 0;
     /// <summary>
     /// 限制一次请求中模型生成 completion 的最大 token 数。输入 token 和输出 token 的总长度受模型的上下文长度的限制。
+    /// default:4096
     /// </summary>
     [JsonPropertyName("max_tokens")]
-    public long MaxTokens { get; set; } = 1024;
+    public long MaxTokens { get; set; } = 4096;
     /// <summary>
     /// 介于 -2.0 和 2.0 之间的数字。如果该值为正，那么新 token 会根据其是否已在已有文本中出现受到相应的惩罚，从而增加模型谈论新主题的可能性。
     /// </summary>
@@ -37,7 +38,8 @@ public class ChatRequest
     /// <summary>
     /// 如果设置为 True，将会以 SSE（server-sent events）的形式以流式发送消息增量。消息流以 data: [DONE] 结尾。
     /// </summary>
-    public bool Stream { get; set; }
+    [JsonInclude]
+    internal bool Stream { get; set; }
     /// <summary>
     /// 采样温度，介于 0 和 2 之间。更高的值，如 0.8，会使输出更随机，而更低的值，如 0.2，会使其更加集中和确定。 我们通常建议可以更改这个值或者更改 top_p，但不建议同时对两者进行修改。
     /// </summary>
