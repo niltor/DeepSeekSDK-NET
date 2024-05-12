@@ -2,6 +2,8 @@
 
 [DeepSeek](https://www.deepseek.com) API SDK specifically for .NET developers
 
+[中文文档](./README_cn.md)
+
 ## 🚀 Features
 
 - [x] List models
