@@ -34,7 +34,7 @@ public DeepSeekClient(HttpClient http, string apiKey);
 
 第一种只需要提供`apiKey`即可创建实例;
 
-第二种提供了`HttpClient`参数，适合通过`HttpClientFactory`来维护`HttpClient`，然后进行实体化。
+第二种提供了`HttpClient`参数，适合通过`HttpClientFactory`来维护`HttpClient`，然后进行实例化。
 
 ### 调用方法
 

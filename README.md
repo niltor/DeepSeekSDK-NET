@@ -2,8 +2,6 @@
 
 ![NuGet Version](https://img.shields.io/nuget/v/Ater.DeepSeek.Core)
 
-
-
 [DeepSeek](https://www.deepseek.com) API SDK specifically for .NET developers
 
 [中文文档](./README_cn.md)
@@ -36,7 +34,7 @@ public DeepSeekClient(HttpClient http, string apiKey);
 
 The first type only requires providing the 'apiKey' to create an instance;
 
-The second method provides a `HttpClient` parameter, which is suitable for maintaining the `HttpClient` through the `HttpClientFactory` and then materializing it.
+The second method provides a `HttpClient` parameter, which is suitable for maintaining the `HttpClient` through the `HttpClientFactory` and then instance it.
 
 ### Calling method
 
@@ -46,6 +44,7 @@ Three asynchronous methods are provided:
 Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken);
 Task<ChatResponse?> ChatAsync(ChatRequest request, CancellationToken cancellationToken);
 Task<IAsyncEnumerable<Choice>?> ChatStreamAsync(ChatRequest request, CancellationToken cancellationToken)
+
 ```
 
 ### List Models Sample
