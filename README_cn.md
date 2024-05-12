@@ -1,6 +1,10 @@
 # DeepSeekSDK-NET
 
+![NuGet Version](https://img.shields.io/nuget/v/Ater.DeepSeek.Core)
+
 专门为.NET开发者提供的 [DeepSeek](https://www.deepseek.com) API SDK.
+
+[English Docs](./README.md)
 
 ## 🚀 功能特性
 
