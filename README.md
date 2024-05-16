@@ -36,6 +36,9 @@ The first type only requires providing the 'apiKey' to create an instance;
 
 The second method provides a `HttpClient` parameter, which is suitable for maintaining the `HttpClient` through the `HttpClientFactory` and then instance it.
 
+> [!NOTE]
+The default timeout for internal HttpClient is 60 seconds, which can be set before sending the request using the 'SetTimeout()' method, or by using the 'CancellationTokeSource' to set the timeout for specific requests.
+
 ### Calling method
 
 Three asynchronous methods are provided:

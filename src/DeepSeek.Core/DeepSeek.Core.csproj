@@ -17,7 +17,7 @@
 		<FileVersion>0.1.0.0</FileVersion>
 		<PackageLicenseUrl></PackageLicenseUrl>
 		<PackageIcon>logo.jpg</PackageIcon>
-		<Version>1.0.0-RC1</Version>
+		<Version>1.0.1</Version>
 		<PackageId>Ater.DeepSeek.Core</PackageId>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<Copyright />

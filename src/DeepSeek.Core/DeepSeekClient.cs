@@ -55,6 +55,11 @@ public class DeepSeekClient
         Http.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Bearer " + apiKey);
     }
 
+    public void SetTimeout(int seconds)
+    {
+        Http.Timeout = TimeSpan.FromSeconds(seconds);
+    }
+
     public async Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken)
     {
         var response = await Http.GetAsync(ModelsEndpoint, cancellationToken);

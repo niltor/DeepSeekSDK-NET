@@ -36,6 +36,9 @@ public DeepSeekClient(HttpClient http, string apiKey);
 
 第二种提供了`HttpClient`参数，适合通过`HttpClientFactory`来维护`HttpClient`，然后进行实例化。
 
+> [!NOTE]
+> 内部HttpClient的超时时间默认为60秒，可通过`SetTimeout()`方法在发送请求前设置，或通过`CancellationTokenSource`设置具体请求的超时时间。
+
 ### 调用方法
 
 一共提供了三个异步方法：
