@@ -9,19 +9,23 @@
 ## 🚀 功能特性
 
 - [x] 列出模型
-- [x] 对话补全
-- [x] 对话补全(流式处理)
+- [x] 对话补全(包含流式)
+- [x] FIM实例(包含流式)
+- [x] 查询余额
 
-## 使用要求
+## 使用
 
 请到[官方网站](https://platform.deepseek.com/)，注册并申请DeepSeek的`ApiKey`.
 
-支持.NET版本:.NET8
+.NET版本:.NET8
 
-> [!TIP]
-> 可自由fork仓库，以支持其他版本
+### 安装Nugget包
 
-## 使用
+[Ater.DeepSeek.Core](https://www.nuget.org/packages/Ater.DeepSeek.Core)
+
+```shell
+dotnet add package Ater.DeepSeek.Core
+```
 
 ### 实例化`DeepSeekClient`
 
@@ -37,7 +41,10 @@ public DeepSeekClient(HttpClient http, string apiKey);
 第二种提供了`HttpClient`参数，适合通过`HttpClientFactory`来维护`HttpClient`，然后进行实例化。
 
 > [!NOTE]
-> 内部HttpClient的超时时间默认为60秒，可通过`SetTimeout()`方法在发送请求前设置，或通过`CancellationTokenSource`设置具体请求的超时时间。
+> 内部HttpClient的超时时间默认为120秒，可通过`SetTimeout()`方法在发送请求前设置，或通过`CancellationTokenSource`设置具体请求的超时时间。
+
+> [!TIP]
+> 如果你想调用本地模型，可尝试自定义`HttpClient`，并设置`BaseAddress`为本地地址。
 
 ### 调用方法
 
@@ -45,8 +52,16 @@ public DeepSeekClient(HttpClient http, string apiKey);
 
 ```csharp
 Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken);
+
 Task<ChatResponse?> ChatAsync(ChatRequest request, CancellationToken cancellationToken);
-Task<IAsyncEnumerable<Choice>?> ChatStreamAsync(ChatRequest request, CancellationToken cancellationToken)
+
+Task<IAsyncEnumerable<Choice>?> ChatStreamAsync(ChatRequest request, CancellationToken cancellationToken);
+
+Task<ChatResponse?> CompletionsAsync(CompletionRequest request, CancellationToken cancellationToken);
+
+Task<IAsyncEnumerable<Choice>?> CompletionsStreamAsync(CompletionRequest request, CancellationToken cancellationToken);
+
+Task<UserResponse?> GetUserBalanceAsync(CancellationToken cancellationToken);
 ```
 
 ### 获取模型列表示例
@@ -121,4 +136,4 @@ Console.WriteLine();
 ```
 
 > [!TIP]
-> 同时可参考本仓库中的[使用示例](https://github.com/niltor/DeepSeekSDK-NET/tree/dev/sample/Sample).
+> 更多[使用示例](https://github.com/niltor/DeepSeekSDK-NET/tree/dev/sample/Sample).

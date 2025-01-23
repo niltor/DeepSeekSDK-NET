@@ -9,19 +9,25 @@
 ## 🚀 Features
 
 - [x] List models
-- [x] Dialogue completion
-- [x] Dialog completion (streaming processing)
+- [x] Chat & Chat streaming
+- [x] Completions & Completions streaming (beta)
+- [x] User balance
 
 ## Usage Requirements
+
+## Usage
 
 Please go to [official website](https://platform.deepseek.com/), register and apply for DeepSeek's ApiKey
 
 Supported .NET version: .NET8
 
-> [!TIP]
-> Free to fork the repository to support other versions
+### Install Nuget package
 
-## Usage
+[Ater.DeepSeek.Core](https://www.nuget.org/packages/Ater.DeepSeek.Core)
+
+```shell
+dotnet add package Ater.DeepSeek.Core
+```
 
 ### Instantiate `DeepSeekClient`
 
@@ -37,7 +43,10 @@ The first type only requires providing the 'apiKey' to create an instance;
 The second method provides a `HttpClient` parameter, which is suitable for maintaining the `HttpClient` through the `HttpClientFactory` and then instance it.
 
 > [!NOTE]
-The default timeout for internal HttpClient is 60 seconds, which can be set before sending the request using the 'SetTimeout()' method, or by using the 'CancellationTokeSource' to set the timeout for specific requests.
+The default timeout for internal HttpClient is 120 seconds, which can be set before sending the request using the 'SetTimeout()' method, or by using the 'CancellationTokeSource' to set the timeout for specific requests.
+
+> [!TIP]
+> If you want to call a local model, try customizing `HttpClient` and setting `BaseAddress` to the local address.
 
 ### Calling method
 
@@ -45,8 +54,16 @@ Three asynchronous methods are provided:
 
 ```csharp
 Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken);
+
 Task<ChatResponse?> ChatAsync(ChatRequest request, CancellationToken cancellationToken);
-Task<IAsyncEnumerable<Choice>?> ChatStreamAsync(ChatRequest request, CancellationToken cancellationToken)
+
+Task<IAsyncEnumerable<Choice>?> ChatStreamAsync(ChatRequest request, CancellationToken cancellationToken);
+
+Task<ChatResponse?> CompletionsAsync(CompletionRequest request, CancellationToken cancellationToken);
+
+Task<IAsyncEnumerable<Choice>?> CompletionsStreamAsync(CompletionRequest request, CancellationToken cancellationToken);
+
+Task<UserResponse?> GetUserBalanceAsync(CancellationToken cancellationToken);
 
 ```
 
@@ -122,4 +139,4 @@ Console.WriteLine();
 ```
 
 > [!TIP]
-> You can also refer to the [usage example](https://github.com/niltor/DeepSeekSDK-NET/tree/dev/sample/Sample) in this repository
+> More [usage example](https://github.com/niltor/DeepSeekSDK-NET/tree/dev/sample/Sample)
