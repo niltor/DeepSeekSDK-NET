@@ -43,6 +43,15 @@ public class DeepSeekClient
 
     public string? ErrorMsg { get; set; }
 
+    /// <summary>
+    /// for dependency injection
+    /// </summary>
+    /// <param name="httpClient"></param>
+    public DeepSeekClient(HttpClient httpClient)
+    {
+        Http = httpClient;
+    }
+
     public DeepSeekClient(HttpClient http, string apiKey)
     {
         Http = http;
