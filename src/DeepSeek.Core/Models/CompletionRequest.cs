@@ -1,20 +1,28 @@
-﻿using System.Text.Json;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Text.Json.Serialization;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace DeepSeek.Core.Models;
-/// <summary>
-/// chat请求
-/// </summary>
-public class ChatRequest
+public class CompletionRequest
 {
     /// <summary>
-    /// 消息列表
+    /// prompt
     /// </summary>
-    public List<Message> Messages { get; set; } = [];
+    public required string Prompt { get; set; }
     /// <summary>
     /// 使用的模型的 ID。您可以使用 deepseek-chat 或者 deepseek-reasoner。
     /// </summary>
     public string Model { get; set; } = DeepSeekModels.ChatModel;
+
+    /// <summary>
+    /// output prompt
+    /// </summary>
+    public bool? Echo { get; set; }
+
     /// <summary>
     /// 介于 -2.0 和 2.0 之间的数字。如果该值为正，那么新 token 会根据其在已有文本中的出现频率受到相应的惩罚，降低模型重复相同内容的可能性。
     /// </summary>
@@ -33,31 +41,19 @@ public class ChatRequest
     public double PresencePenalty { get; set; } = 0;
 
     /// <summary>
-    /// type:text or json_object
-    /// </summary>
-    [JsonPropertyName("response_format")]
-    public ResponseFormat? ResponseFormat { get; set; }
-
-    /// <summary>
     /// Up to 16 sequences where the API will stop generating further tokens.
     /// </summary>
-    public List<string> Stop { get; set; } = [];
+    public List<string>? Stop { get; set; } 
     /// <summary>
     /// 如果设置为 True，将会以 SSE（server-sent events）的形式以流式发送消息增量。消息流以 data: [DONE] 结尾。
     /// </summary>
     [JsonInclude]
-    public bool Stream { get; set; }
+    public bool Stream { get; set; } 
 
     /// <summary>
-    /// max 128 functions
+    /// suffix
     /// </summary>
-    public List<Tool>? Tools { get; set; }
-
-    /// <summary>
-    /// tool choice
-    /// </summary>
-    [JsonPropertyName("tool_choice")]
-    public JsonElement? ToolChoice { get; set; }
+    public string? Suffix { get; set; }
 
     [JsonPropertyName("stream_options")]
     public StreamOptions? StreamOptions { get; set; }
@@ -71,29 +67,8 @@ public class ChatRequest
     public long TopP { get; set; } = 1;
 
     /// <summary>
-    /// 是否返回所输出 token 的对数概率。如果为 true，则在 message 的 content 中返回每个输出 token 的对数概率
+    /// <=20
     /// </summary>
     [JsonPropertyName("logprobs")]
-    public bool Logprobs { get; set; }
-    /// <summary>
-    /// 一个介于 0 到 20 之间的整数 N，指定每个输出位置返回输出概率 top N 的 token，且返回这些 token 的对数概率。指定此参数时，logprobs 必须为 true。
-    /// </summary>
-    [JsonPropertyName("top_logprobs")]
-    public int? TopLogprobs { get; set; }
+    public int? Logprobs { get; set; } = 0;
 }
-public class StreamOptions
-{
-    [JsonPropertyName("include_usage")]
-    public bool IncludeUsage { get; set; }
-}
-
-public class Tool
-{
-    public string Type { get; set; } = "function";
-    public JsonElement Function { get; set; }
-}
-public class ResponseFormat
-{
-    public string Type { get; set; } = ResponseFormatTypes.Text;
-}
-

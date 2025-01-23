@@ -4,7 +4,7 @@ namespace DeepSeek.Core.Models;
 
 public class ModelResponse
 {
-    public string? Object { get; set; }
+    public string Object { get; set; } = string.Empty;
     public List<Model> Data { get; set; } = [];
 }
 

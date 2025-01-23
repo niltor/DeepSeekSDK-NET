@@ -7,7 +7,7 @@
 		<Authors>NilTor,AterDev</Authors>
 		<Company>Geethin</Company>
 		<Description>DeepSeek API SDK</Description>
-		<PackageReleaseNotes>publish RC Version</PackageReleaseNotes>
+		<PackageReleaseNotes></PackageReleaseNotes>
 		<PackageProjectUrl>https://github.com/niltor/DeepSeekSDK-NET</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/niltor/DeepSeekSDK-NET</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -17,7 +17,7 @@
 		<FileVersion>0.1.0.0</FileVersion>
 		<PackageLicenseUrl></PackageLicenseUrl>
 		<PackageIcon>logo.jpg</PackageIcon>
-		<Version>1.0.1</Version>
+		<Version>1.1.0-beta</Version>
 		<PackageId>Ater.DeepSeek.Core</PackageId>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<Copyright />

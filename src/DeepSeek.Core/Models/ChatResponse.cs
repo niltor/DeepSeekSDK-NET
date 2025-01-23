@@ -9,7 +9,7 @@ public class ChatResponse
     /// <summary>
     /// 该对话的唯一标识符。
     /// </summary>
-    public string? Id { get; set; }
+    public string Id { get; set; } = default!;
     /// <summary>
     /// 模型生成的 completion 的选择列表
     /// </summary>
@@ -22,19 +22,20 @@ public class ChatResponse
     /// <summary>
     /// 生成该 completion 的模型名
     /// </summary>
-    public string? Model { get; set; }
+    public string Model { get; set; } = default!;
+
+    [JsonPropertyName("system_fingerprint")]
+    public string? SystemFingerprint { get; set; }
 
     /// <summary>
     /// 对象的类型, 其值为 chat.completion
     /// </summary>
-    public string Object { get; set; } = "chat.completion";
+    public string Object { get; set; } = default!;
     /// <summary>
     /// 该对话补全请求的用量信息
     /// </summary>
     public Usage? Usage { get; set; }
 }
-
-
 
 /// <summary>
 /// 模型生成的选择
@@ -43,7 +44,7 @@ public class Choice
 {
     [JsonPropertyName("finish_reason")]
     public string? FinishReason { get; set; }
-    public long Index { get; set; }
+    public int Index { get; set; }
     public Message? Message { get; set; }
     /// <summary>
     /// 该 choice 的对数概率信息。
@@ -51,17 +52,31 @@ public class Choice
     public Logprobs? Logprobs { get; set; }
 
     /// <summary>
-    /// 增量返回内容
+    /// use this when streaming 
     /// </summary>
     public Message? Delta { get; set; }
-}
 
+    /// <summary>
+    /// for completion 
+    /// </summary>
+    public string Text { get; set; } = string.Empty;
+}
 
 /// <summary>
 /// 对数概率信息
 /// </summary>
 public class Logprobs
 {
+    [JsonPropertyName("text_offset")]
+    public int[] TextOffset { get; set; } = [];
+
+    public string[] Tokens { get; set; } = [];
+    [JsonPropertyName("token_logprobs")]
+    public double[] TokenLogProbs { get; set; } = [];
+
+    [JsonPropertyName("top_logprobs")]
+    public List<TopLogprobs>? TopLogProbs { get; set; }
+
     /// <summary>
     /// 包含输出 token 对数概率信息的列表
     /// </summary>
@@ -93,10 +108,27 @@ public class TopLogprobs
 public class Usage
 {
     [JsonPropertyName("completion_tokens")]
-    public long CompletionTokens { get; set; }
+    public int CompletionTokens { get; set; }
     [JsonPropertyName("prompt_tokens")]
-    public long PromptTokens { get; set; }
+    public int PromptTokens { get; set; }
+
+    [JsonPropertyName("prompt_cache_hit_tokens")]
+    public int PromptCacheHitTokens { get; set; }
+    [JsonPropertyName("prompt_cache_miss_tokens")]
+    public int PromptCacheMissTokens { get; set; }
     [JsonPropertyName("total_tokens")]
-    public long TotalTokens { get; set; }
+    public int TotalTokens { get; set; }
+
+    [JsonPropertyName("prompt_tokens_details")]
+    public CompletionTokensDetails Details { get; set; }
+
+    public class CompletionTokensDetails
+    {
+        [JsonPropertyName("reasoning_tokens")]
+        public int ReasoningTokens { get; set; }
+        [JsonPropertyName("cached_tokens")]
+        public int CachedTokens { get; set; }
+    }
 }
+
 

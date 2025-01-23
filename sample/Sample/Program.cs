@@ -2,7 +2,6 @@
 using DeepSeek.Core.Models;
 using Microsoft.Extensions.Configuration;
 
-
 // 从appsettings.json读取秘钥
 var builder = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
@@ -19,11 +18,10 @@ if (apiKey == null)
     return;
 }
 
-
-// 创建DeepSeekClient
+// create client
 var client = new DeepSeekClient(apiKey);
 
-#region 示例1：获取模型列表
+// get models
 var modelResponse = await client.ListModelsAsync(new CancellationToken());
 if (modelResponse is null)
 {
@@ -35,30 +33,25 @@ foreach (var model in modelResponse.Data)
     Console.WriteLine(model);
 }
 
-#endregion
+await ChatAsync(client);
+await CompletionsAsync(client);
+await GetUserBalanceAsync(client);
+await StreamChatAsync(client);
 
+Console.WriteLine("done");
+Console.ReadLine();
 
-var request = new ChatRequest
+// stream chat using DeepSeek-R1
+static async Task StreamChatAsync(DeepSeekClient client)
 {
-    Messages = [
-        Message.NewSystemMessage("你是一个语言翻译家"),
-        Message.NewUserMessage("请翻译'它们害怕极了！'为英语!")
-    ],
-    Model = Constant.Model.ChatModel
-};
+    var request = new ChatRequest
+    {
+        Messages = [
+            Message.NewUserMessage("which is greater between 9.11 and 9.8?")
+        ],
+        Model = DeepSeekModels.ReasonerModel
+    };
 
-// 聊天流式输出
-//await StreamChatAsync(client, request);
-// 聊天等待完成
-//await ChatAsync(client, request);
-
-
-Console.WriteLine("done!");
-
-
-
-static async Task StreamChatAsync(DeepSeekClient client, ChatRequest request)
-{
     var choices = await client.ChatStreamAsync(request, new CancellationToken());
     if (choices is null)
     {
@@ -72,13 +65,70 @@ static async Task StreamChatAsync(DeepSeekClient client, ChatRequest request)
     Console.WriteLine();
 }
 
-static async Task ChatAsync(DeepSeekClient client, ChatRequest request)
+// chat
+static async Task ChatAsync(DeepSeekClient client)
 {
+    var request = new ChatRequest
+    {
+        Messages = [
+            Message.NewSystemMessage("你是一个语言翻译家"),
+            Message.NewUserMessage("""
+                请翻译'它们害怕极了！'为英语!,返回json，格式为:
+                {
+                    "text":"",
+                    "translate":""
+                }
+                """)
+        ],
+        ResponseFormat = new ResponseFormat
+        {
+            Type = ResponseFormatTypes.JsonObject
+        },
+        Model = DeepSeekModels.ChatModel
+    };
+
+
     var chatResponse = await client.ChatAsync(request, new CancellationToken());
 
     if (chatResponse is null)
     {
         Console.WriteLine(client.ErrorMsg);
     }
-    Console.WriteLine(chatResponse?.Choices.First().Message?.Content);
+    // usage
+    Console.WriteLine("use token:" + chatResponse?.Usage?.TotalTokens);
+    // result
+    Console.WriteLine(chatResponse?.Choices.FirstOrDefault()?.Message?.Content);
+}
+
+// completions
+static async Task CompletionsAsync(DeepSeekClient client)
+{
+    var request = new CompletionRequest
+    {
+        Prompt = ".Net and C# is prefect, because",
+        Model = DeepSeekModels.ChatModel,
+        MaxTokens = 100
+    };
+    var response = await client.CompletionsAsync(request, new CancellationToken());
+    if (response is null)
+    {
+        Console.WriteLine(client.ErrorMsg);
+        return;
+    }
+    // usage
+    Console.WriteLine(response?.Usage?.TotalTokens);
+    // result
+    Console.WriteLine(response?.Choices.First().Text);
+}
+
+// user balance
+static async Task GetUserBalanceAsync(DeepSeekClient client)
+{
+    var balance = await client.GetUserBalanceAsync(new CancellationToken());
+    if (balance is null)
+    {
+        Console.WriteLine(client.ErrorMsg);
+        return;
+    }
+    Console.WriteLine(balance.BalanceInfos.First().TotalBalance);
 }
