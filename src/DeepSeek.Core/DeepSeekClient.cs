@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -30,7 +31,7 @@ public class DeepSeekClient
     /// <summary>
     ///  done sign
     /// </summary>
-    private const string StreamDoneSign = "data: [DONE]";
+    private const string StreamDoneSign = "[DONE]";
 
     protected readonly HttpClient Http;
     public JsonSerializerOptions JsonSerializerOptions = new()
@@ -132,7 +133,7 @@ public class DeepSeekClient
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     /// <exception cref="Exception"></exception>
-    public async Task<IAsyncEnumerable<Choice>?> ChatStreamAsync(ChatRequest request, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<Choice>? ChatStreamAsync(ChatRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         request.Stream = true;
         var content = new StringContent(JsonSerializer.Serialize(request, JsonSerializerOptions), Encoding.UTF8, "application/json");
@@ -141,45 +142,37 @@ public class DeepSeekClient
         {
             Content = content,
         };
-        var response = await Http.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        using var response = await Http.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
         if (response.IsSuccessStatusCode)
         {
-            var stream = await response.Content.ReadAsStreamAsync();
-            var reader = new StreamReader(stream);
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new StreamReader(stream);
 
-            var channel = Channel.CreateUnbounded<Choice>();
-            _ = Task.Run(async () =>
+            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
             {
-                while (!reader.EndOfStream)
+                var line = await reader.ReadLineAsync();
+                if (line != null && line.StartsWith("data: "))
                 {
-                    var line = await reader.ReadLineAsync();
-                    if (line == StreamDoneSign)
+                    var json = line.Substring(6);
+                    if (!string.IsNullOrWhiteSpace(json) && json != StreamDoneSign)
                     {
-                        break;
+                        var chatResponse = JsonSerializer.Deserialize<ChatResponse>(json, JsonSerializerOptions);
+                        var choice = chatResponse?.Choices.FirstOrDefault();
+                        if (choice is null)
+                        {
+                            continue;
+                        }
+                        yield return choice;
                     }
-                    if (string.IsNullOrWhiteSpace(line)) { continue; }
-
-                    var lineData = line.Replace("data:", "").Trim();
-                    var chatResponse = JsonSerializer.Deserialize<ChatResponse>(lineData, JsonSerializerOptions);
-
-                    var choice = chatResponse?.Choices.FirstOrDefault();
-                    if (choice is null)
-                    {
-                        continue;
-                    }
-                    await channel.Writer.WriteAsync(choice);
                 }
-                channel.Writer.Complete();
-            });
-
-            return channel.Reader.ReadAllAsync();
+            }
         }
         else
         {
             var res = await response.Content.ReadAsStringAsync();
             ErrorMsg = response.StatusCode.ToString() + res;
-            return null;
+            yield break;
         }
     }
 
@@ -222,7 +215,7 @@ public class DeepSeekClient
     /// <param name="request"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task<IAsyncEnumerable<Choice>?> CompletionsStreamAsync(CompletionRequest request, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<Choice>? CompletionsStreamAsync(CompletionRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         request.Stream = true;
         var content = new StringContent(JsonSerializer.Serialize(request, JsonSerializerOptions), Encoding.UTF8, "application/json");
@@ -240,41 +233,33 @@ public class DeepSeekClient
 
         if (response.IsSuccessStatusCode)
         {
-            var stream = await response.Content.ReadAsStreamAsync();
-            var reader = new StreamReader(stream);
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new StreamReader(stream);
 
-            var channel = Channel.CreateUnbounded<Choice>();
-            _ = Task.Run(async () =>
+            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
             {
-                while (!reader.EndOfStream)
+                var line = await reader.ReadLineAsync();
+                if (line != null && line.StartsWith("data: "))
                 {
-                    var line = await reader.ReadLineAsync();
-                    if (line == StreamDoneSign)
+                    var json = line.Substring(6);
+                    if (!string.IsNullOrWhiteSpace(json) && json != StreamDoneSign)
                     {
-                        break;
+                        var chatResponse = JsonSerializer.Deserialize<ChatResponse>(json, JsonSerializerOptions);
+                        var choice = chatResponse?.Choices.FirstOrDefault();
+                        if (choice is null)
+                        {
+                            continue;
+                        }
+                        yield return choice;
                     }
-                    if (string.IsNullOrWhiteSpace(line)) { continue; }
-
-                    var lineData = line.Replace("data:", "").Trim();
-                    var chatResponse = JsonSerializer.Deserialize<ChatResponse>(lineData, JsonSerializerOptions);
-
-                    var choice = chatResponse?.Choices.First();
-                    if (choice is null)
-                    {
-                        continue;
-                    }
-                    await channel.Writer.WriteAsync(choice);
                 }
-                channel.Writer.Complete();
-            });
-
-            return channel.Reader.ReadAllAsync();
+            }
         }
         else
         {
             var res = await response.Content.ReadAsStringAsync();
-            ErrorMsg = res;
-            return null;
+            ErrorMsg = response.StatusCode.ToString() + res;
+            yield break;
         }
     }
 

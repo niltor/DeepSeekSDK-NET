@@ -13,6 +13,7 @@
 - [x] FIM实例(包含流式)
 - [x] 查询余额
 - [x] 支持调用本地模型
+- [x] 对ASP.NET Core的集成支持
 
 ## 使用
 
@@ -165,3 +166,85 @@ return res?.Choices.First().Message?.Content;
 
 > [!TIP]
 > 更多[使用示例](https://github.com/niltor/DeepSeekSDK-NET/tree/dev/sample/Sample).
+>
+
+## 在ASP.NET Core中使用
+
+### 安装`Ater.DeepSeek.AspNetCore`包
+
+```shell
+dotnet add package Ater.DeepSeek.AspNetCore
+```
+
+### 示例代码
+
+```csharp
+using DeepSeek.AspNetCore;
+using DeepSeek.Core;
+using DeepSeek.Core.Models;
+using Microsoft.AspNetCore.Mvc;
+
+var builder = WebApplication.CreateBuilder(args);
+
+var apiKey = builder.Configuration["DeepSeekApiKey"];
+builder.Services.AddDeepSeek(option =>
+{
+    option.BaseAddress = new Uri("https://api.deepseek.com");
+    option.Timeout = TimeSpan.FromSeconds(300);
+    option.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Bearer " + apiKey);
+});
+
+var app = builder.Build();
+
+app.MapGet("/test", async ([FromServices] DeepSeekClient client) =>
+{
+    var res = await client.ChatAsync(new ChatRequest
+    {
+        Messages = new List<Message>
+        {
+            Message.NewUserMessage("Why dotnet is good?")
+        },
+        MaxTokens = 200
+    }, new CancellationToken());
+
+    return res?.Choices.First().Message?.Content;
+});
+
+app.Run();
+```
+
+### 流式返回示例
+
+```csharp
+app.MapGet("/chat", async (HttpContext context, [FromServices] DeepSeekClient client, CancellationToken token) =>
+{
+    context.Response.ContentType = "text/text;charset=utf-8";
+    try
+    {
+        var choices = await client.ChatStreamAsync(new ChatRequest
+        {
+            Messages = new List<Message>
+            {
+                Message.NewUserMessage("Why dotnet is good?")
+            },
+            MaxTokens = 200
+        }, token);
+
+        if (choices != null)
+        {
+            await foreach (var choice in choices)
+            {
+                await context.Response.WriteAsync(choice.Delta!.Content);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        await context.Response.WriteAsync("暂时无法提供服务" + ex.Message);
+    }
+    await context.Response.CompleteAsync();
+});
+```
+
+> [!TIP]
+> More [usage example](https://github.com/niltor/DeepSeekSDK-NET/tree/dev/sample/AspNetCoreSample)
