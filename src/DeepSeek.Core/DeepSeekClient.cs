@@ -18,9 +18,8 @@ public class DeepSeekClient
     /// <summary>
     /// chat endpoint
     /// </summary>
-    public readonly string ChatEndpoint = "/chat/completions";
-
-    public readonly string CompletionEndpoint = "/completions";
+    public string ChatEndpoint { get; private set; } = "/chat/completions";
+    public string CompletionEndpoint { get; private set; } = "/completions";
     public readonly string UserBalanceEndpoint = "/user/balance";
 
     /// <summary>
@@ -41,7 +40,7 @@ public class DeepSeekClient
         Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
     };
 
-    public string? ErrorMsg { get; set; }
+    public string? ErrorMsg { get; private set; }
 
     /// <summary>
     /// for dependency injection
@@ -79,6 +78,15 @@ public class DeepSeekClient
     {
         Http.Timeout = TimeSpan.FromSeconds(seconds);
     }
+    public void SetChatEndpoint(string endpoint)
+    {
+        ChatEndpoint = endpoint;
+    }
+
+    public void SetCompletionEndpoint(string endpoint)
+    {
+        CompletionEndpoint = endpoint;
+    }
 
     public async Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken)
     {
@@ -108,7 +116,13 @@ public class DeepSeekClient
             ErrorMsg = response.StatusCode.ToString() + res;
             return null;
         }
-        return JsonSerializer.Deserialize<ChatResponse>(await response.Content.ReadAsStringAsync(), JsonSerializerOptions);
+        var resContent = await response.Content.ReadAsStringAsync();
+        if (string.IsNullOrWhiteSpace(resContent))
+        {
+            ErrorMsg = "empty response";
+            return null;
+        }
+        return JsonSerializer.Deserialize<ChatResponse>(resContent, JsonSerializerOptions);
     }
 
     /// <summary>
@@ -193,7 +207,13 @@ public class DeepSeekClient
             ErrorMsg = response.StatusCode.ToString() + res;
             return null;
         }
-        return JsonSerializer.Deserialize<ChatResponse>(await response.Content.ReadAsStringAsync(), JsonSerializerOptions);
+        var resContent = await response.Content.ReadAsStringAsync();
+        if (string.IsNullOrWhiteSpace(resContent))
+        {
+            ErrorMsg = "empty response";
+            return null;
+        }
+        return JsonSerializer.Deserialize<ChatResponse>(resContent, JsonSerializerOptions);
     }
 
     /// <summary>
@@ -274,6 +294,11 @@ public class DeepSeekClient
         }
 
         var content = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<UserResponse>(await response.Content.ReadAsStringAsync(), JsonSerializerOptions);
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            ErrorMsg = "empty response";
+            return null;
+        }
+        return JsonSerializer.Deserialize<UserResponse>(content, JsonSerializerOptions);
     }
 }

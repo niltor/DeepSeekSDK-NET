@@ -8,7 +8,11 @@ public static class Extension
     public static IServiceCollection AddDeepSeek(this IServiceCollection services, Action<HttpClient> option)
     {
         services.AddHttpClient<DeepSeekClient>(option);
-        services.AddSingleton<DeepSeekClient>();
+        services.AddScoped(provider =>
+        {
+            var httpClient = provider.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(DeepSeekClient));
+            return new DeepSeekClient(httpClient);
+        });
         return services;
     }
 }
