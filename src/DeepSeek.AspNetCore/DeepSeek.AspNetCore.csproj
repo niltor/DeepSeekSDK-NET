@@ -1,18 +1,36 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <Authors>NilTor,AterDev</Authors>
+        <Company>Geethin</Company>
+        <Description>DeepSeek API SDK</Description>
+        <PackageReleaseNotes>
+            1. ASP.NET Core
+        </PackageReleaseNotes>
+        <PackageProjectUrl>https://github.com/niltor/DeepSeekSDK-NET</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/niltor/DeepSeekSDK-NET</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>LLM,AI,DeepSeek,API,SDK</PackageTags>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <PackageIcon>logo.jpg</PackageIcon>
+        <Version>1.0.0</Version>
+        <PackageId>Ater.DeepSeek.AspNetCore</PackageId>
+        <Title>DeepSeek.AspNetCore</Title>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <Copyright />
+        <OutputType>Library</OutputType>
+        <NoWarn>1701;1702;1591;1570</NoWarn>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageOutputPath>./pack</PackageOutputPath>
     </PropertyGroup>
-
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
     </ItemGroup>
-
     <ItemGroup>
         <ProjectReference Include="..\DeepSeek.Core\DeepSeek.Core.csproj" />
     </ItemGroup>
-
 </Project>

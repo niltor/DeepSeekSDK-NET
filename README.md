@@ -12,6 +12,7 @@
 - [x] Chat & Chat streaming
 - [x] Completions & Completions streaming (beta)
 - [x] User balance
+- [x] Local model support
 
 ## Usage Requirements
 
@@ -50,7 +51,7 @@ The default timeout for internal HttpClient is 120 seconds, which can be set bef
 
 ### Calling method
 
-Three asynchronous methods are provided:
+`DeepSeekClient` class provides six asynchronous methods to call DeepSeek's API:
 
 ```csharp
 Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken);
@@ -136,6 +137,34 @@ await foreach (var choice in choices)
     Console.Write(choice.Delta?.Content);
 }
 Console.WriteLine();
+```
+
+### Local Model Examples
+
+```csharp
+// use local models api
+var httpClient = new HttpClient
+{
+    // set your local api address
+    BaseAddress = new Uri("http://localhost:5000"),
+    Timeout = TimeSpan.FromSeconds(300),
+};
+// if have api key
+// httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Bearer " + "your_token");
+
+var localClient = new DeepSeekClient(httpClient);
+localClient.SetChatEndpoint("/chat");
+localClient.SetCompletionEndpoint("/completions");
+
+var res = await localClient.ChatAsync(new ChatRequest
+{
+    Messages = new List<Message>
+    {
+        Message.NewUserMessage("hello")
+    }
+}, new CancellationToken());
+
+return res?.Choices.First().Message?.Content;
 ```
 
 > [!TIP]

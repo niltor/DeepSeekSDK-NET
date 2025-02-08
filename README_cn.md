@@ -12,6 +12,7 @@
 - [x] 对话补全(包含流式)
 - [x] FIM实例(包含流式)
 - [x] 查询余额
+- [x] 支持调用本地模型
 
 ## 使用
 
@@ -19,7 +20,7 @@
 
 .NET版本:.NET8
 
-### 安装Nugget包
+### 安装Nuget包
 
 [Ater.DeepSeek.Core](https://www.nuget.org/packages/Ater.DeepSeek.Core)
 
@@ -48,7 +49,7 @@ public DeepSeekClient(HttpClient http, string apiKey);
 
 ### 调用方法
 
-一共提供了三个异步方法：
+`DeepSeekClient`类提供了六个异步方法来调用DeepSeek的API:
 
 ```csharp
 Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken);
@@ -133,6 +134,33 @@ await foreach (var choice in choices)
     Console.Write(choice.Delta?.Content);
 }
 Console.WriteLine();
+```
+
+### 本地模型调用示例
+
+```csharp
+// use local models api
+var httpClient = new HttpClient
+{
+    // set your local api address
+    BaseAddress = new Uri("http://localhost:5000"),
+    Timeout = TimeSpan.FromSeconds(300),
+};
+// if have api key
+// httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Bearer " + "your_token");
+
+var localClient = new DeepSeekClient(httpClient);
+localClient.SetChatEndpoint("/chat");
+localClient.SetCompletionEndpoint("/completions");
+
+var res = await localClient.ChatAsync(new ChatRequest
+{
+    Messages = new List<Message>
+    {
+        Message.NewUserMessage("hello")
+    }
+}, new CancellationToken());
+return res?.Choices.First().Message?.Content;
 ```
 
 > [!TIP]
