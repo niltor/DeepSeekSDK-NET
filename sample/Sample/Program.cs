@@ -3,29 +3,6 @@ using DeepSeek.Core.Models;
 using Microsoft.Extensions.Configuration;
 
 
-// use local models api
-var httpClient = new HttpClient
-{
-    // set your local api address
-    BaseAddress = new Uri("http://localhost:5000"),
-    Timeout = TimeSpan.FromSeconds(300),
-};
-// if have api key
-// httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Bearer " + "your_token");
-
-var localClient = new DeepSeekClient(httpClient);
-localClient.SetChatEndpoint("/chat");
-localClient.SetCompletionEndpoint("/completions");
-
-await localClient.ChatAsync(new ChatRequest
-{
-    Messages = new List<Message>
-    {
-        Message.NewUserMessage("hello")
-    }
-}, new CancellationToken());
-
-
 // 从appsettings.json读取秘钥
 var builder = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
@@ -57,10 +34,11 @@ foreach (var model in modelResponse.Data)
     Console.WriteLine(model);
 }
 
-await ChatAsync(client);
-await CompletionsAsync(client);
-await GetUserBalanceAsync(client);
+//await ChatAsync(client);
+//await CompletionsAsync(client);
+//await GetUserBalanceAsync(client);
 await StreamChatAsync(client);
+//await TestLocalAsync();
 
 Console.WriteLine("done");
 Console.ReadLine();
@@ -73,10 +51,11 @@ static async Task StreamChatAsync(DeepSeekClient client)
         Messages = [
             Message.NewUserMessage("which is greater between 9.11 and 9.8?")
         ],
-        Model = DeepSeekModels.ReasonerModel
+        Model = DeepSeekModels.ChatModel
+        //Model = DeepSeekModels.ReasonerModel
     };
 
-    var choices = await client.ChatStreamAsync(request, new CancellationToken());
+    var choices = client.ChatStreamAsync(request, new CancellationToken());
     if (choices is null)
     {
         Console.WriteLine(client.ErrorMsg);
@@ -155,4 +134,31 @@ static async Task GetUserBalanceAsync(DeepSeekClient client)
         return;
     }
     Console.WriteLine(balance.BalanceInfos.First().TotalBalance);
+}
+
+static async Task TestLocalAsync()
+{
+    // use local models api
+    var httpClient = new HttpClient
+    {
+        // set your local api address
+        BaseAddress = new Uri("http://localhost:5000"),
+        Timeout = TimeSpan.FromSeconds(300),
+    };
+    // if have api key
+    // httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", "Bearer " + "your_token");
+
+    var localClient = new DeepSeekClient(httpClient);
+    localClient.SetChatEndpoint("/chat");
+    localClient.SetCompletionEndpoint("/completions");
+
+    var res = await localClient.ChatAsync(new ChatRequest
+    {
+        Messages = new List<Message>
+        {
+            Message.NewUserMessage("hello")
+        }
+    }, new CancellationToken());
+
+    Console.WriteLine(res?.Choices.FirstOrDefault()?.Message);
 }

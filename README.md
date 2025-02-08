@@ -127,7 +127,7 @@ var request = new ChatRequest
     Model = Constant.Model.ChatModel
 };
 
-var choices = await client.ChatStreamAsync(request, new CancellationToken());
+var choices = client.ChatStreamAsync(request, new CancellationToken());
 if (choices is null)
 {
     Console.WriteLine(client.ErrorMsg);
@@ -224,7 +224,7 @@ app.MapGet("/chat", async (HttpContext context, [FromServices] DeepSeekClient cl
     context.Response.ContentType = "text/text;charset=utf-8";
     try
     {
-        var choices = await client.ChatStreamAsync(new ChatRequest
+        var choices = client.ChatStreamAsync(new ChatRequest
         {
             Messages = new List<Message>
             {

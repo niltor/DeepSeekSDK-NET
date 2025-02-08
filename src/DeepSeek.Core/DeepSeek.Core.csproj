@@ -9,6 +9,8 @@
         <Description>DeepSeek API SDK</Description>
         <PackageReleaseNotes>
             1. Support local models
+            2. Improve streaming return processing
+            3. Improve the sample code
         </PackageReleaseNotes>
         <PackageProjectUrl>https://github.com/niltor/DeepSeekSDK-NET</PackageProjectUrl>
         <RepositoryUrl>https://github.com/niltor/DeepSeekSDK-NET</RepositoryUrl>

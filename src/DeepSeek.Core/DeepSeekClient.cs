@@ -154,6 +154,7 @@ public class DeepSeekClient
                 var line = await reader.ReadLineAsync();
                 if (line != null && line.StartsWith("data: "))
                 {
+                    
                     var json = line.Substring(6);
                     if (!string.IsNullOrWhiteSpace(json) && json != StreamDoneSign)
                     {
