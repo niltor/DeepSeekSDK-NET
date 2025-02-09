@@ -40,7 +40,7 @@ public class Message
         };
     }
 
-    public static Message NewAssistantMessage(string content, bool? prefix, string? reasoningContent)
+    public static Message NewAssistantMessage(string content, bool? prefix = false, string? reasoningContent = null)
     {
         return new Message
         {
