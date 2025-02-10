@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFrameworks>net8.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
@@ -16,7 +16,7 @@
         <PackageTags>LLM,AI,DeepSeek,API,SDK</PackageTags>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageIcon>logo.jpg</PackageIcon>
-        <Version>1.1.1</Version>
+        <Version>1.1.2</Version>
         <PackageId>Ater.DeepSeek.AspNetCore</PackageId>
         <Title>DeepSeek.AspNetCore</Title>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>

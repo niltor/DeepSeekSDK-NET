@@ -8,9 +8,7 @@
         <Company>Geethin</Company>
         <Description>DeepSeek API SDK</Description>
         <PackageReleaseNotes>
-            1. Support local models
-            2. Improve streaming return processing
-            3. Improve the sample code
+            1. set default params value for NewAssistantMessage
         </PackageReleaseNotes>
         <PackageProjectUrl>https://github.com/niltor/DeepSeekSDK-NET</PackageProjectUrl>
         <RepositoryUrl>https://github.com/niltor/DeepSeekSDK-NET</RepositoryUrl>
@@ -21,7 +19,7 @@
         <FileVersion>0.1.0.0</FileVersion>
         <PackageLicenseUrl></PackageLicenseUrl>
         <PackageIcon>logo.jpg</PackageIcon>
-        <Version>1.1.1</Version>
+        <Version>1.1.2</Version>
         <PackageId>Ater.DeepSeek.Core</PackageId>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <Copyright />
