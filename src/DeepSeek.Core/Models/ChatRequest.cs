@@ -68,7 +68,7 @@ public class ChatRequest
     /// 作为调节采样温度的替代方案，模型会考虑前 top_p 概率的 token 的结果。所以 0.1 就意味着只有包括在最高 10% 概率中的 token 会被考虑。 我们通常建议修改这个值或者更改 temperature，但不建议同时对两者进行修改。
     /// </summary>
     [JsonPropertyName("top_p")]
-    public long TopP { get; set; } = 1;
+    public double TopP { get; set; } = 1;
 
     /// <summary>
     /// 是否返回所输出 token 的对数概率。如果为 true，则在 message 的 content 中返回每个输出 token 的对数概率
