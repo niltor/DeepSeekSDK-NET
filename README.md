@@ -14,6 +14,7 @@
 - [x] User balance
 - [x] Local model support
 - [x] ASP.NET Core integration support
+- [x] Function call
 
 ## Usage Requirements
 
