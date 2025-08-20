@@ -1,6 +1,6 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -32,6 +32,9 @@
     <PackageOutputPath>./pack</PackageOutputPath>
     <UserSecretsId>22045c95-30db-48d5-862c-48f22ed56e0a</UserSecretsId>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="9.7.1" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="..\..\logo.jpg">
       <Pack>True</Pack>
