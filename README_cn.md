@@ -14,6 +14,7 @@
 - [x] 查询余额
 - [x] 支持调用本地模型
 - [x] 对ASP.NET Core的集成支持
+- [x] 函数调用
 
 ## 使用
 
@@ -135,6 +136,119 @@ await foreach (var choice in choices)
     Console.Write(choice.Delta?.Content);
 }
 Console.WriteLine();
+```
+
+### 函数调用示例
+
+比如我有本地函数定义:
+
+```csharp
+internal class Functions
+{
+    public static string GetWeather(WeatherDto dto)
+    {
+        return $"The weather in {dto.City} on {dto.Date:yyyy-MM-dd} is sunny with a high of 25°C and a low of 15°C.";
+    }
+}
+
+internal class WeatherDto
+{
+    public required string City { get; set; }
+
+    [Description("The date,default is today date")]
+    public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+}
+```
+
+在使用LLM时，传入函数定义:
+
+```csharp
+public static async Task CallFunctionExampleAsync(DeepSeekClient client)
+{
+    JsonSerializerOptions options = JsonSerializerOptions.Default;
+    // 必须的配置，否则生成的格式报错
+    JsonSchemaExporterOptions exporterOptions = new()
+    {
+        TreatNullObliviousAsNonNullable = true,
+    };
+    var request = new ChatRequest
+    {
+        Messages = [Message.NewUserMessage("What is the weather in New York today?")],
+        Model = DeepSeekModels.ChatModel,
+        Stream = true,
+        // 添加tools的定义
+        Tools =
+        [
+            new Tool
+            {
+                Function = new RequestFunction
+                {
+                    Name = "JustUselessFunction",
+                    Description = "nothing to do",
+                },
+            },
+            new Tool
+            {
+                Function = new RequestFunction
+                {
+                    Name = "GetWeather",
+                    Description = "get the weather",
+                    // 参数的json schema
+                    Parameters = options.GetJsonSchemaAsNode(
+                        typeof(WeatherDto),
+                        exporterOptions
+                    ),
+                },
+            },
+        ],
+    };
+    // 第一次返回LLM会识别要调用函数，返回函数内容
+    var response = await client.ChatAsync(request, new CancellationToken());
+    if (response is null)
+    {
+        Console.WriteLine(client.ErrorMsg);
+        return;
+    }
+
+    var message = response.Choices[0].Message;
+    if (message == null)
+    {
+        Console.WriteLine("no message");
+        return;
+    }
+    request.Messages.Add(message); // 必须将消息添加到请求中，以便后续调用函数时使用。
+    if (message.ToolCalls != null && message.ToolCalls.Count > 0)
+    {
+        // 如果有函数调用，则使用本地函数获得内容
+        var tool = message.ToolCalls.FirstOrDefault();
+        if (tool?.Function.Name == "GetWeather")
+        {
+            var weatherDto = JsonSerializer.Deserialize<WeatherDto>(
+                tool.Function.Arguments.ToString(),
+                options
+            );
+
+            var toolResult = Functions.GetWeather(weatherDto);
+            // 将本地函数调用结果添加到消息中
+            request.Messages.Add(Message.NewToolMessage(toolResult, tool.Id));
+
+            // 再次使用LLM处理结果
+            var toolResponse = await client.ChatAsync(request, new CancellationToken());
+            if (toolResponse is null)
+            {
+                Console.WriteLine(client.ErrorMsg);
+                return;
+            }
+
+            Console.WriteLine(toolResponse.Choices[0].Message?.Content);
+        }
+    }
+    else
+    {
+        Console.WriteLine("No tool calls found in the response.");
+    }
+}
+
 ```
 
 ### 本地模型调用示例

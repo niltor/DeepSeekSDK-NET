@@ -140,6 +140,118 @@ await foreach (var choice in choices)
 Console.WriteLine();
 ```
 
+### Function Calling Example
+
+For example, I have a local function definition:
+
+```csharp
+internal class Functions
+{
+    public static string GetWeather(WeatherDto dto)
+    {
+        return $"The weather in {dto.City} on {dto.Date:yyyy-MM-dd} is sunny with a high of 25°C and a low of 15°C.";
+    }
+}
+
+internal class WeatherDto
+{
+    public required string City { get; set; }
+    
+    [Description("The date, default is today's date")]
+    public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+}
+```
+
+When using LLM, pass in the function definition:
+
+```csharp
+public static async Task CallFunctionExampleAsync(DeepSeekClient client)
+{
+    JsonSerializerOptions options = JsonSerializerOptions.Default;
+    // Required configuration, otherwise the generated format will be incorrect.
+    JsonSchemaExporterOptions exporterOptions = new()
+    {
+        TreatNullObliviousAsNonNullable = true,
+    };
+    var request = new ChatRequest
+    {
+        Messages = [Message.NewUserMessage("What is the weather in New York today?")],
+        Model = DeepSeekModels.ChatModel,
+        Stream = true,
+        // Add tool definitions
+        Tools =
+        [
+            new Tool
+            {
+                Function = new RequestFunction
+                {
+                    Name = "JustUselessFunction",
+                    Description = "nothing to do",
+                },
+            },
+            new Tool
+            {
+                Function = new RequestFunction
+                {
+                    Name = "GetWeather",
+                    Description = "get the weather",
+                    Parameters = options.GetJsonSchemaAsNode(
+                        typeof(WeatherDto),
+                        exporterOptions
+                    ),
+                },
+            },
+        ],
+    };
+    // The first time LLM is returned, it recognizes that a function is to be called and returns the function contents.
+    var response = await client.ChatAsync(request, new CancellationToken());
+    if (response is null)
+    {
+        Console.WriteLine(client.ErrorMsg);
+        return;
+    }
+
+    var message = response.Choices[0].Message;
+    if (message == null)
+    {
+        Console.WriteLine("no message");
+        return;
+    }
+    request.Messages.Add(message); // The message must be added to the request for use in subsequent function calls.
+    if (message.ToolCalls != null && message.ToolCalls.Count > 0)
+    {
+        // If a function call exists, use the local function to obtain the content.
+        var tool = message.ToolCalls.FirstOrDefault();
+        if (tool?.Function.Name == "GetWeather")
+        {
+            var weatherDto = JsonSerializer.Deserialize<WeatherDto>(
+                tool.Function.Arguments.ToString(),
+                options
+            );
+
+            var toolResult = Functions.GetWeather(weatherDto);
+            // Add the local function call result to the message.
+            request.Messages.Add(Message.NewToolMessage(toolResult, tool.Id));
+
+            // Use LLM to process the result again.
+            var toolResponse = await client.ChatAsync(request, new CancellationToken());
+            if (toolResponse is null)
+            {
+                Console.WriteLine(client.ErrorMsg);
+                return;
+            }
+
+            Console.WriteLine(toolResponse.Choices[0].Message?.Content);
+        }
+    }
+    else
+    {
+        Console.WriteLine("No tool calls found in the response.");
+    }
+}
+
+```
+
 ### Local Model Examples
 
 ```csharp
