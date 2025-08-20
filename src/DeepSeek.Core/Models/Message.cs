@@ -24,7 +24,7 @@ public class Message
     public string? ToolCallId { get; set; }
 
     /// <summary>
-    /// tool calls
+    /// Tool calls made by the assistant.
     /// </summary>
     public List<ToolCalls>? ToolCalls { get; set; }
 
