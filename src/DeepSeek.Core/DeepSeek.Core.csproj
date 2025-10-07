@@ -49,8 +49,4 @@
             <PackagePath>\</PackagePath>
         </None>
     </ItemGroup>
-    <ItemGroup>
-        <Folder Include="Extensions\" />
-        <Folder Include="Options\" />
-    </ItemGroup>
 </Project>
