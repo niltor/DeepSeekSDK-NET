@@ -15,6 +15,7 @@
 - [x] Local model support
 - [x] ASP.NET Core integration support
 - [x] Function call
+- [x] Support Microsoft.Extensions.AI IChatClient
 
 ## Usage Requirements
 
@@ -283,6 +284,15 @@ return res?.Choices.First().Message?.Content;
 
 > [!TIP]
 > More [usage example](https://github.com/niltor/DeepSeekSDK-NET/tree/dev/sample/Sample)
+
+## Microsoft.Extensions.AI Integration
+
+Support`IChatClient`interface
+
+```csharp
+// use Microsoft.Extensions.AI IChatClient
+builder.Services.AddChatClient(sp => new DeepSeekChatClient(apiKey));
+```
 
 ## ASP.NET Core Integration
 

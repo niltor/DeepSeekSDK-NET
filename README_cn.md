@@ -15,6 +15,7 @@
 - [x] 支持调用本地模型
 - [x] 对ASP.NET Core的集成支持
 - [x] 函数调用
+- [x] 支持Microsoft.Extensions.AI IChatClient
 
 ## 使用
 
@@ -281,6 +282,16 @@ return res?.Choices.First().Message?.Content;
 > [!TIP]
 > 更多[使用示例](https://github.com/niltor/DeepSeekSDK-NET/tree/dev/sample/Sample).
 >
+
+
+## Microsoft.Extensions.AI Integration
+
+支持`IChatClient`接口
+
+```csharp
+// use Microsoft.Extensions.AI IChatClient
+builder.Services.AddChatClient(sp => new DeepSeekChatClient(apiKey));
+```
 
 ## 在ASP.NET Core中使用
 

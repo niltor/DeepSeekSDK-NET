@@ -1,21 +1,16 @@
-using System.Runtime.CompilerServices;
-using System.Text.Json;
 using DeepSeek.Core.Models;
 using Microsoft.Extensions.AI;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace DeepSeek.Core.Adapters;
 
 /// <summary>
-/// Adapter to Microsoft.Extensions.AI IChatClient over DeepSeekClient
+/// DeepSeekClient for Microsoft.Extensions.AI IChatClient
 /// </summary>
-public sealed class DeepSeekChatClientAdapter : IChatClient
+public sealed class DeepSeekChatClient(string apiKey) : IChatClient
 {
-    private readonly DeepSeekClient _inner;
-
-    public DeepSeekChatClientAdapter(DeepSeekClient inner)
-    {
-        _inner = inner;
-    }
+    private readonly DeepSeekClient _client = new(apiKey);
 
     public void Dispose()
     {
@@ -37,12 +32,12 @@ public sealed class DeepSeekChatClientAdapter : IChatClient
         if (messages is null)
             throw new ArgumentNullException(nameof(messages));
         var req = MapToChatRequest(messages, options);
-        var res = await _inner.ChatAsync(req, cancellationToken).ConfigureAwait(false);
+        var res = await _client.ChatAsync(req, cancellationToken).ConfigureAwait(false);
         if (res is null)
         {
             // Return basic response with error text if available
             return new Microsoft.Extensions.AI.ChatResponse(
-                [new ChatMessage(ChatRole.Assistant, _inner.ErrorMsg)]
+                [new ChatMessage(ChatRole.Assistant, _client.ErrorMsg)]
             );
         }
         return MapToChatResponse(res);
@@ -57,7 +52,8 @@ public sealed class DeepSeekChatClientAdapter : IChatClient
         if (messages is null)
             throw new ArgumentNullException(nameof(messages));
         var req = MapToChatRequest(messages, options);
-        var stream = _inner.ChatStreamAsync(req, cancellationToken);
+        req.Stream = true; // Enable streaming for this request
+        var stream = _client.ChatStreamAsync(req, cancellationToken);
         if (stream is null)
         {
             yield break;
@@ -85,11 +81,22 @@ public sealed class DeepSeekChatClientAdapter : IChatClient
     {
         var req = new ChatRequest
         {
-            Messages = new List<Message>(),
+            Messages = [],
             Model = options?.ModelId ?? DeepSeekModels.ChatModel,
             Temperature = options?.Temperature.HasValue == true ? options.Temperature.Value : 1.0,
             TopP = options?.TopP.HasValue == true ? options.TopP.Value : 1.0,
             MaxTokens = options?.MaxOutputTokens ?? 4096,
+            ResponseFormat = options?.ResponseFormat == ChatResponseFormat.Json
+                ? new ResponseFormat { Type = ResponseFormatTypes.JsonObject }
+                : new ResponseFormat { Type = ResponseFormatTypes.Text },
+            FrequencyPenalty = options?.FrequencyPenalty ?? 0.0,
+            PresencePenalty = options?.PresencePenalty ?? 0.0,
+            Stop = options?.StopSequences?.ToList() ?? [],
+            Stream = false,
+            StreamOptions = new StreamOptions { IncludeUsage = true },
+
+            Logprobs = false, // Default value, could be mapped from custom options
+            TopLogprobs = null // Default value, could be mapped from custom options
         };
 
         foreach (var m in messages)
@@ -118,10 +125,9 @@ public sealed class DeepSeekChatClientAdapter : IChatClient
             }
         }
 
-        // Tools mapping (optional): if options.Tools present and contain functions, map to DeepSeek tools
         if (options?.Tools is { Count: > 0 })
         {
-            req.Tools = new List<Tool>();
+            req.Tools = [];
             foreach (var tool in options.Tools)
             {
                 if (tool is DelegatingAIFunction dfn)
@@ -178,6 +184,19 @@ public sealed class DeepSeekChatClientAdapter : IChatClient
             req.ToolChoice = JsonDocument.Parse("\"none\"").RootElement;
         }
 
+        if (options?.AdditionalProperties != null)
+        {
+            if (options.AdditionalProperties.TryGetValue("logprobs", out var logprobs) && logprobs is bool logprobsValue)
+            {
+                req.Logprobs = logprobsValue;
+            }
+
+            if (options.AdditionalProperties.TryGetValue("top_logprobs", out var topLogprobs) && topLogprobs is int topLogprobsValue)
+            {
+                req.TopLogprobs = topLogprobsValue;
+            }
+        }
+
         return req;
     }
 
@@ -185,14 +204,90 @@ public sealed class DeepSeekChatClientAdapter : IChatClient
     {
         var content = res.Choices.FirstOrDefault()?.Message?.Content ?? string.Empty;
         var message = new ChatMessage(ChatRole.Assistant, content);
+
+        // Handle tool calls if present in the first choice
+        var firstChoice = res.Choices.FirstOrDefault();
+        if (firstChoice?.Message?.ToolCalls?.Any() == true)
+        {
+            foreach (var toolCall in firstChoice.Message.ToolCalls)
+            {
+                if (toolCall.Function != null)
+                {
+                    // Parse arguments as dictionary if it's a JSON string
+                    IDictionary<string, object?>? argsDict = null;
+                    if (!string.IsNullOrEmpty(toolCall.Function.Arguments))
+                    {
+                        try
+                        {
+                            argsDict = JsonSerializer.Deserialize<Dictionary<string, object?>>(toolCall.Function.Arguments);
+                        }
+                        catch
+                        {
+                            // If parsing fails, create a simple dictionary with the raw string
+                            argsDict = new Dictionary<string, object?> { ["arguments"] = toolCall.Function.Arguments };
+                        }
+                    }
+
+                    var functionCall = new FunctionCallContent(
+                        toolCall.Id ?? string.Empty,
+                        toolCall.Function.Name ?? string.Empty,
+                        argsDict
+                    );
+
+                    message.Contents.Add(functionCall);
+                }
+            }
+        }
+
         var chatResponse = new Microsoft.Extensions.AI.ChatResponse([message])
         {
             ModelId = res.Model,
-            AdditionalProperties = new AdditionalPropertiesDictionary(),
+            AdditionalProperties = [],
         };
+
+        // Add comprehensive metadata
         chatResponse.AdditionalProperties["id"] = res.Id;
         chatResponse.AdditionalProperties["created"] = res.Created;
-        chatResponse.AdditionalProperties["usage_total_tokens"] = res.Usage?.TotalTokens;
+        if (!string.IsNullOrEmpty(res.SystemFingerprint))
+        {
+            chatResponse.AdditionalProperties["system_fingerprint"] = res.SystemFingerprint;
+        }
+        chatResponse.AdditionalProperties["object"] = res.Object;
+
+        // Add usage information if available
+        if (res.Usage != null)
+        {
+            chatResponse.AdditionalProperties["usage_total_tokens"] = res.Usage.TotalTokens;
+            chatResponse.AdditionalProperties["usage_prompt_tokens"] = res.Usage.PromptTokens;
+            chatResponse.AdditionalProperties["usage_completion_tokens"] = res.Usage.CompletionTokens;
+
+            // Set the standard usage property if Microsoft.Extensions.AI supports it
+            chatResponse.Usage = new UsageDetails
+            {
+                InputTokenCount = res.Usage.PromptTokens,
+                OutputTokenCount = res.Usage.CompletionTokens,
+                TotalTokenCount = res.Usage.TotalTokens
+            };
+        }
+
+        // Add finish reason from first choice
+        if (firstChoice != null && !string.IsNullOrEmpty(firstChoice.FinishReason))
+        {
+            ChatFinishReason? finishReason = firstChoice.FinishReason switch
+            {
+                "stop" => ChatFinishReason.Stop,
+                "length" => ChatFinishReason.Length,
+                "tool_calls" => ChatFinishReason.ToolCalls,
+                "content_filter" => ChatFinishReason.ContentFilter,
+                _ => null
+            };
+
+            if (finishReason.HasValue)
+            {
+                chatResponse.AdditionalProperties["finish_reason"] = finishReason.Value;
+            }
+        }
+
         return chatResponse;
     }
 }

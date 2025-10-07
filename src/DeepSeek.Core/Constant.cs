@@ -1,4 +1,4 @@
-﻿namespace DeepSeek.Core;
+namespace DeepSeek.Core;
 
 [Obsolete("Use DeepSeekModels instead")]
 public class Constant
@@ -13,8 +13,6 @@ public class Constant
 public class DeepSeekModels
 {
     public const string ChatModel = "deepseek-chat";
-    [Obsolete]
-    public const string CoderModel = "deepseek-coder";
     public const string ReasonerModel = "deepseek-reasoner";
 }
 
