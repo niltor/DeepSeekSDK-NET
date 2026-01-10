@@ -93,8 +93,6 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
             PresencePenalty = options?.PresencePenalty ?? 0.0,
             Stop = options?.StopSequences?.ToList() ?? [],
             Stream = false,
-            StreamOptions = new StreamOptions { IncludeUsage = true },
-
             Logprobs = false, // Default value, could be mapped from custom options
             TopLogprobs = null // Default value, could be mapped from custom options
         };
@@ -186,6 +184,11 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
 
         if (options?.AdditionalProperties != null)
         {
+            if (options.AdditionalProperties.TryGetValue("include_usage", out var includeUsage) && includeUsage is bool usageValue)
+            {
+                req.StreamOptions = new StreamOptions { IncludeUsage = usageValue };
+            }
+
             if (options.AdditionalProperties.TryGetValue("logprobs", out var logprobs) && logprobs is bool logprobsValue)
             {
                 req.Logprobs = logprobsValue;
