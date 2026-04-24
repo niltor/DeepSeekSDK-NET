@@ -57,7 +57,7 @@ internal class Examples
         var request = new ChatRequest
         {
             Messages = [Message.NewUserMessage("What is the weather in New York today?")],
-            Model = DeepSeekModels.ChatModel,
+            Model = DeepSeekModels.Flash,
             Stream = true,
             Tools =
             [
@@ -146,7 +146,7 @@ internal class Examples
                 ),
             ],
             ResponseFormat = new ResponseFormat { Type = ResponseFormatTypes.JsonObject },
-            Model = DeepSeekModels.ChatModel,
+            Model = DeepSeekModels.Flash,
         };
 
         var chatResponse = await client.ChatAsync(request, new CancellationToken());
@@ -167,7 +167,7 @@ internal class Examples
         var request = new CompletionRequest
         {
             Prompt = ".Net and C# is prefect, because",
-            Model = DeepSeekModels.ChatModel,
+            Model = DeepSeekModels.Flash,
             MaxTokens = 100,
         };
         var response = await client.CompletionsAsync(request, new CancellationToken());
@@ -223,8 +223,8 @@ internal class Examples
         var request = new ChatRequest
         {
             Messages = [Message.NewUserMessage("which is greater between 9.11 and 9.8?")],
-            //Model = DeepSeekModels.ChatModel
-            Model = DeepSeekModels.ReasonerModel,
+            // Model = DeepSeekModels.Flash
+            Model = DeepSeekModels.Pro,
         };
 
         var choices = client.ChatStreamAsync(request, new CancellationToken());

@@ -52,6 +52,11 @@ The default timeout for internal HttpClient is 120 seconds, which can be set bef
 > [!TIP]
 > If you want to call a local model, try customizing `HttpClient` and setting `BaseAddress` to the local address.
 
+> [!IMPORTANT]
+> DeepSeek now supports `deepseek-v4-pro` and `deepseek-v4-flash` on the same `base_url`.
+> The legacy model IDs `deepseek-chat` and `deepseek-reasoner` will stop working on 2026-07-24.
+> During the transition period, those legacy IDs point to the non-thinking and thinking modes of `deepseek-v4-flash`.
+
 ### Calling method
 
 `DeepSeekClient` class provides six asynchronous methods to call DeepSeek's API:
@@ -102,7 +107,7 @@ var request = new ChatRequest
         Message.NewUserMessage("Please translate 'They are scared! ' into English!")
     ],
     // Specify the model
-    Model = Constant.Model.ChatModel
+    Model = DeepSeekModels.Flash
 };
 
 var chatResponse = await client.ChatAsync(request, new CancellationToken());
@@ -126,7 +131,7 @@ var request = new ChatRequest
         Message.NewUserMessage("Please translate 'They are scared! ' into English!")
     ],
     // Specify the model
-    Model = Constant.Model.ChatModel
+    Model = DeepSeekModels.Flash
 };
 
 var choices = client.ChatStreamAsync(request, new CancellationToken());
@@ -178,7 +183,7 @@ public static async Task CallFunctionExampleAsync(DeepSeekClient client)
     var request = new ChatRequest
     {
         Messages = [Message.NewUserMessage("What is the weather in New York today?")],
-        Model = DeepSeekModels.ChatModel,
+        Model = DeepSeekModels.Flash,
         Stream = true,
         // Add tool definitions
         Tools =

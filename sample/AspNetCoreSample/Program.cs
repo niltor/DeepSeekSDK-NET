@@ -79,7 +79,7 @@ app.MapGet("/ichat", async (HttpContext context, [FromServices] IChatClient chat
 
         var response = chatClient.GetStreamingResponseAsync(messages, new ChatOptions
         {
-            ModelId = DeepSeekModels.ChatModel,
+            ModelId = DeepSeekModels.Flash,
             MaxOutputTokens = 200,
         }, token);
         if (response != null)

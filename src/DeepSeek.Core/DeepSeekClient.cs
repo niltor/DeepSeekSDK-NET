@@ -227,7 +227,7 @@ public class DeepSeekClient
         string endpoint = CompletionEndpoint;
         if (Http.BaseAddress?.OriginalString == BaseAddress)
         {
-            endpoint = "/beta" + CompletionEndpoint;
+            endpoint = "beta/" + CompletionEndpoint;
         }
         await Task.Delay(100);
         var response = await Http.PostAsync(endpoint, content, cancellationToken);
@@ -259,7 +259,7 @@ public class DeepSeekClient
         string endpoint = CompletionEndpoint;
         if (Http.BaseAddress?.OriginalString == BaseAddress)
         {
-            endpoint = "/beta" + CompletionEndpoint;
+            endpoint = "beta/" + CompletionEndpoint;
         }
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
         {

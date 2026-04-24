@@ -15,9 +15,9 @@ public class ChatRequest
     public List<Message> Messages { get; set; } = [];
 
     /// <summary>
-    /// 使用的模型的 ID。您可以使用 deepseek-chat 或者 deepseek-reasoner。
+    /// 使用的模型的 ID。您可以使用 deepseek-v4-pro 或者 deepseek-v4-flash。
     /// </summary>
-    public string Model { get; set; } = DeepSeekModels.ChatModel;
+    public string Model { get; set; } = DeepSeekModels.Flash;
 
     /// <summary>
     /// 介于 -2.0 和 2.0 之间的数字。如果该值为正，那么新 token 会根据其在已有文本中的出现频率受到相应的惩罚，降低模型重复相同内容的可能性。

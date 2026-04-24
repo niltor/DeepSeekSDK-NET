@@ -2,8 +2,8 @@ namespace DeepSeek.Core;
 
 public class DeepSeekModels
 {
-    public const string ChatModel = "deepseek-chat";
-    public const string ReasonerModel = "deepseek-reasoner";
+    public const string Pro = "deepseek-v4-pro";
+    public const string Flash = "deepseek-v4-flash";
 }
 
 public class ResponseFormatTypes

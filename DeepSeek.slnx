@@ -7,4 +7,7 @@
     <Project Path="src/DeepSeek.AspNetCore/DeepSeek.AspNetCore.csproj" />
     <Project Path="src/DeepSeek.Core/DeepSeek.Core.csproj" />
   </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/DeepSeek.IntegrationTests/DeepSeek.IntegrationTests.csproj" />
+  </Folder>
 </Solution>

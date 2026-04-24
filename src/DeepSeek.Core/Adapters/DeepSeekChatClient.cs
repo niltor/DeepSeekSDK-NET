@@ -82,7 +82,7 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
         var req = new ChatRequest
         {
             Messages = [],
-            Model = options?.ModelId ?? DeepSeekModels.ChatModel,
+            Model = options?.ModelId ?? DeepSeekModels.Flash,
             Temperature = options?.Temperature.HasValue == true ? options.Temperature.Value : 1.0,
             TopP = options?.TopP.HasValue == true ? options.TopP.Value : 1.0,
             MaxTokens = options?.MaxOutputTokens ?? 4096,

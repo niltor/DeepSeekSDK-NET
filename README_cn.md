@@ -50,6 +50,11 @@ public DeepSeekClient(HttpClient http, string apiKey);
 > [!TIP]
 > 如果你想调用本地模型，可尝试自定义`HttpClient`，并设置`BaseAddress`为本地地址。
 
+> [!IMPORTANT]
+> DeepSeek 现已支持 `deepseek-v4-pro` 与 `deepseek-v4-flash`，访问新模型时 `base_url` 不变。
+> 旧模型 ID `deepseek-chat` 与 `deepseek-reasoner` 将在 2026-07-24 停止使用。
+> 过渡期内，这两个旧 ID 分别指向 `deepseek-v4-flash` 的非思考模式与思考模式。
+
 ### 调用方法
 
 `DeepSeekClient`类提供了六个异步方法来调用DeepSeek的API:
@@ -99,7 +104,7 @@ var request = new ChatRequest
         Message.NewUserMessage("请翻译'它们害怕极了！'为英语!")
     ],
     // 指定模型
-    Model = Constant.Model.ChatModel
+    Model = DeepSeekModels.Flash
 };
 
 var chatResponse = await client.ChatAsync(request, new CancellationToken());
@@ -123,7 +128,7 @@ var request = new ChatRequest
         Message.NewUserMessage("请翻译'它们害怕极了！'为英语!")
     ],
     // 指定模型
-    Model = Constant.Model.ChatModel
+    Model = DeepSeekModels.Flash
 };
 
 var choices = client.ChatStreamAsync(request, new CancellationToken());
@@ -175,7 +180,7 @@ public static async Task CallFunctionExampleAsync(DeepSeekClient client)
     var request = new ChatRequest
     {
         Messages = [Message.NewUserMessage("What is the weather in New York today?")],
-        Model = DeepSeekModels.ChatModel,
+        Model = DeepSeekModels.Flash,
         Stream = true,
         // 添加tools的定义
         Tools =
