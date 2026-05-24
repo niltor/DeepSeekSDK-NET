@@ -66,6 +66,7 @@ public class Message
 
 public class ToolCalls
 {
+    public int Index { get; set; }
     public string Id { get; set; } = string.Empty;
     public string Type { get; set; } = "function";
     public ToolCallsFunction Function { get; set; } = default!;
