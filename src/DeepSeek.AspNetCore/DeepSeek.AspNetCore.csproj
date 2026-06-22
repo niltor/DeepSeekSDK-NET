@@ -8,7 +8,7 @@
         <Company>Geethin</Company>
         <Description>DeepSeek API SDK for ASP.NET Core with Microsoft.Extensions.AI integration</Description>
         <PackageReleaseNotes>
-            1. add index in tool_callls, because streaming response may have multiple tool_calls.
+            1. add thinking and reasoning_effort support in request.
         </PackageReleaseNotes>
         <PackageProjectUrl>https://github.com/niltor/DeepSeekSDK-NET</PackageProjectUrl>
         <RepositoryUrl>https://github.com/niltor/DeepSeekSDK-NET</RepositoryUrl>
@@ -16,7 +16,7 @@
         <PackageTags>LLM,AI,DeepSeek,API,SDK,AspNetCore,Microsoft.Extensions.AI</PackageTags>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageIcon>logo.jpg</PackageIcon>
-        <Version>1.4.1</Version>
+        <Version>1.4.2</Version>
         <PackageId>Ater.DeepSeek.AspNetCore</PackageId>
         <Title>DeepSeek.AspNetCore</Title>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
