@@ -89,8 +89,6 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
             ResponseFormat = options?.ResponseFormat == ChatResponseFormat.Json
                 ? new ResponseFormat { Type = ResponseFormatTypes.JsonObject }
                 : new ResponseFormat { Type = ResponseFormatTypes.Text },
-            FrequencyPenalty = options?.FrequencyPenalty ?? 0.0,
-            PresencePenalty = options?.PresencePenalty ?? 0.0,
             Stop = options?.StopSequences?.ToList() ?? [],
             Stream = false,
             Logprobs = false, // Default value, could be mapped from custom options
@@ -187,6 +185,35 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
             if (options.AdditionalProperties.TryGetValue("include_usage", out var includeUsage) && includeUsage is bool usageValue)
             {
                 req.StreamOptions = new StreamOptions { IncludeUsage = usageValue };
+            }
+
+            if (options.AdditionalProperties.TryGetValue("thinking", out var thinking))
+            {
+                req.Thinking = thinking switch
+                {
+                    bool enabled => new Thinking
+                    {
+                        Type = enabled ? ThinkingTypes.Enabled : ThinkingTypes.Disabled,
+                    },
+                    string type => new Thinking { Type = type },
+                    Thinking thinkingValue => thinkingValue,
+                    _ => throw new ArgumentException(
+                        "The 'thinking' additional property must be a bool, string, or Thinking instance.",
+                        nameof(thinking)
+                    ),
+                };
+            }
+
+            if (options.AdditionalProperties.TryGetValue("reasoning_effort", out var reasoningEffort))
+            {
+                req.ReasoningEffort = reasoningEffort switch
+                {
+                    string reasoningEffortValue => reasoningEffortValue,
+                    _ => throw new ArgumentException(
+                        "The 'reasoning_effort' additional property must be a string.",
+                        nameof(reasoningEffort)
+                    ),
+                };
             }
 
             if (options.AdditionalProperties.TryGetValue("logprobs", out var logprobs) && logprobs is bool logprobsValue)

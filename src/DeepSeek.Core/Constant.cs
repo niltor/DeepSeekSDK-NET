@@ -11,3 +11,15 @@ public class ResponseFormatTypes
     public const string Text = "text";
     public const string JsonObject = "json_object";
 }
+
+public class ThinkingTypes
+{
+    public const string Enabled = "enabled";
+    public const string Disabled = "disabled";
+}
+
+public class ReasoningEffortTypes
+{
+    public const string High = "high";
+    public const string Max = "max";
+}

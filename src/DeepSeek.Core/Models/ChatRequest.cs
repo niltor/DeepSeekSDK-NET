@@ -9,6 +9,9 @@ namespace DeepSeek.Core.Models;
 /// </summary>
 public class ChatRequest
 {
+    private Thinking? _thinking;
+    private string? _reasoningEffort;
+
     /// <summary>
     /// 消息列表
     /// </summary>
@@ -20,10 +23,44 @@ public class ChatRequest
     public string Model { get; set; } = DeepSeekModels.Flash;
 
     /// <summary>
-    /// 介于 -2.0 和 2.0 之间的数字。如果该值为正，那么新 token 会根据其在已有文本中的出现频率受到相应的惩罚，降低模型重复相同内容的可能性。
+    /// 控制 thinking 和 non-thinking 模式之间的开关。
+    /// 赋值 null 会清除显式设置，并回退到默认 enabled。
     /// </summary>
-    [JsonPropertyName("frequency_penalty")]
-    public double FrequencyPenalty { get; set; } = 0;
+    [JsonIgnore]
+    public Thinking Thinking
+    {
+        get => _thinking ?? new Thinking();
+        set => _thinking = value;
+    }
+
+    /// <summary>
+    /// 控制模型的推理强度。
+    /// 赋值 null 会清除显式设置，并回退到默认 high。
+    /// </summary>
+    [JsonIgnore]
+    public string ReasoningEffort
+    {
+        get => _reasoningEffort ?? ReasoningEffortTypes.High;
+        set => _reasoningEffort = value;
+    }
+
+    [JsonPropertyName("thinking")]
+    [JsonInclude]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    internal Thinking? ThinkingValue
+    {
+        get => _thinking;
+        set => _thinking = value;
+    }
+
+    [JsonPropertyName("reasoning_effort")]
+    [JsonInclude]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    internal string? ReasoningEffortValue
+    {
+        get => _reasoningEffort;
+        set => _reasoningEffort = value;
+    }
 
     /// <summary>
     /// 限制一次请求中模型生成 completion 的最大 token 数。输入 token 和输出 token 的总长度受模型的上下文长度的限制。
@@ -31,12 +68,6 @@ public class ChatRequest
     /// </summary>
     [JsonPropertyName("max_tokens")]
     public long MaxTokens { get; set; } = 4096;
-
-    /// <summary>
-    /// 介于 -2.0 和 2.0 之间的数字。如果该值为正，那么新 token 会根据其是否已在已有文本中出现受到相应的惩罚，从而增加模型谈论新主题的可能性。
-    /// </summary>
-    [JsonPropertyName("presence_penalty")]
-    public double PresencePenalty { get; set; } = 0;
 
     /// <summary>
     /// type:text or json_object
@@ -96,6 +127,12 @@ public class StreamOptions
 {
     [JsonPropertyName("include_usage")]
     public bool IncludeUsage { get; set; }
+}
+
+public class Thinking
+{
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = ThinkingTypes.Enabled;
 }
 
 public class Tool
