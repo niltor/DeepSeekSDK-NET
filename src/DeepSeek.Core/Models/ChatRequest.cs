@@ -24,6 +24,7 @@ public class ChatRequest
     /// <summary>
     /// 控制 thinking 和 non-thinking 模式之间的开关。
     /// </summary>
+    [JsonPropertyName("thinking")]
     public Thinking Thinking
     {
         get => _thinking;

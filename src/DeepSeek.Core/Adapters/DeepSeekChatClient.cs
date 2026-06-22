@@ -199,7 +199,7 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
                     Thinking thinkingValue => thinkingValue,
                     _ => throw new ArgumentException(
                         "The 'thinking' additional property must be a bool, string, or Thinking instance.",
-                        nameof(options)
+                        nameof(thinking)
                     ),
                 };
             }
