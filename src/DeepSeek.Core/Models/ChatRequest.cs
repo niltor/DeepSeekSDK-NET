@@ -9,7 +9,10 @@ namespace DeepSeek.Core.Models;
 /// </summary>
 public class ChatRequest
 {
-    private Thinking _thinking = new();
+    private Thinking? _thinking;
+    private string? _reasoningEffort;
+    private bool _thinkingSet;
+    private bool _reasoningEffortSet;
 
     /// <summary>
     /// 消息列表
@@ -24,18 +27,56 @@ public class ChatRequest
     /// <summary>
     /// 控制 thinking 和 non-thinking 模式之间的开关。
     /// </summary>
-    [JsonPropertyName("thinking")]
+    [JsonIgnore]
     public Thinking Thinking
     {
-        get => _thinking;
-        set => _thinking = value ?? new Thinking();
+        get => _thinking ?? new Thinking();
+        set
+        {
+            _thinking = value;
+            _thinkingSet = value is not null;
+        }
     }
 
     /// <summary>
     /// 控制模型的推理强度。
     /// </summary>
+    [JsonIgnore]
+    public string ReasoningEffort
+    {
+        get => _reasoningEffort ?? ReasoningEffortTypes.High;
+        set
+        {
+            _reasoningEffort = value;
+            _reasoningEffortSet = value is not null;
+        }
+    }
+
+    [JsonPropertyName("thinking")]
+    [JsonInclude]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    internal Thinking? ThinkingValue
+    {
+        get => _thinkingSet ? _thinking ?? new Thinking() : null;
+        set
+        {
+            _thinking = value;
+            _thinkingSet = value is not null;
+        }
+    }
+
     [JsonPropertyName("reasoning_effort")]
-    public string ReasoningEffort { get; set; } = ReasoningEffortTypes.High;
+    [JsonInclude]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    internal string? ReasoningEffortValue
+    {
+        get => _reasoningEffortSet ? _reasoningEffort ?? ReasoningEffortTypes.High : null;
+        set
+        {
+            _reasoningEffort = value;
+            _reasoningEffortSet = value is not null;
+        }
+    }
 
     /// <summary>
     /// 限制一次请求中模型生成 completion 的最大 token 数。输入 token 和输出 token 的总长度受模型的上下文长度的限制。

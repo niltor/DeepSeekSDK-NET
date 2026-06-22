@@ -120,7 +120,29 @@ public class ToolCallsSerializationTests
     }
 
     [Fact]
-    public void ChatRequest_SerializesThinkingFields_WithoutDeprecatedPenaltyFields()
+    public void ChatRequest_OmitsThinkingFields_WhenNotExplicitlySet()
+    {
+        var request = new ChatRequest
+        {
+            Messages = [Message.NewUserMessage("Hi")],
+            Model = DeepSeekModels.Pro,
+        };
+
+        Assert.Equal(ThinkingTypes.Enabled, request.Thinking.Type);
+        Assert.Equal(ReasoningEffortTypes.High, request.ReasoningEffort);
+
+        var json = JsonSerializer.Serialize(request, JsonOptions);
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+
+        Assert.False(root.TryGetProperty("thinking", out _));
+        Assert.False(root.TryGetProperty("reasoning_effort", out _));
+        Assert.False(root.TryGetProperty("frequency_penalty", out _));
+        Assert.False(root.TryGetProperty("presence_penalty", out _));
+    }
+
+    [Fact]
+    public void ChatRequest_SerializesThinkingFields_WhenExplicitlySet()
     {
         var request = new ChatRequest
         {
