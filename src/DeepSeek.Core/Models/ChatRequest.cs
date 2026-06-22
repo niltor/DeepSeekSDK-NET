@@ -24,6 +24,7 @@ public class ChatRequest
 
     /// <summary>
     /// 控制 thinking 和 non-thinking 模式之间的开关。
+    /// 赋值 null 会清除显式设置，并回退到默认 enabled。
     /// </summary>
     [JsonIgnore]
     public Thinking Thinking
@@ -34,6 +35,7 @@ public class ChatRequest
 
     /// <summary>
     /// 控制模型的推理强度。
+    /// 赋值 null 会清除显式设置，并回退到默认 high。
     /// </summary>
     [JsonIgnore]
     public string ReasoningEffort
