@@ -9,6 +9,8 @@ namespace DeepSeek.Core.Models;
 /// </summary>
 public class ChatRequest
 {
+    private Thinking _thinking = new();
+
     /// <summary>
     /// 消息列表
     /// </summary>
@@ -22,7 +24,11 @@ public class ChatRequest
     /// <summary>
     /// 控制 thinking 和 non-thinking 模式之间的开关。
     /// </summary>
-    public Thinking Thinking { get; set; } = new();
+    public Thinking Thinking
+    {
+        get => _thinking;
+        set => _thinking = value ?? new Thinking();
+    }
 
     /// <summary>
     /// 控制模型的推理强度。
