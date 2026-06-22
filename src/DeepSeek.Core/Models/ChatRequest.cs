@@ -11,8 +11,6 @@ public class ChatRequest
 {
     private Thinking? _thinking;
     private string? _reasoningEffort;
-    private bool _thinkingSet;
-    private bool _reasoningEffortSet;
 
     /// <summary>
     /// 消息列表
@@ -31,18 +29,7 @@ public class ChatRequest
     public Thinking Thinking
     {
         get => _thinking ?? new Thinking();
-        set
-        {
-            if (value is null)
-            {
-                _thinking = null;
-                _thinkingSet = false;
-                return;
-            }
-
-            _thinking = value;
-            _thinkingSet = true;
-        }
+        set => _thinking = value;
     }
 
     /// <summary>
@@ -52,18 +39,7 @@ public class ChatRequest
     public string ReasoningEffort
     {
         get => _reasoningEffort ?? ReasoningEffortTypes.High;
-        set
-        {
-            if (value is null)
-            {
-                _reasoningEffort = null;
-                _reasoningEffortSet = false;
-                return;
-            }
-
-            _reasoningEffort = value;
-            _reasoningEffortSet = true;
-        }
+        set => _reasoningEffort = value;
     }
 
     [JsonPropertyName("thinking")]
@@ -71,19 +47,8 @@ public class ChatRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     internal Thinking? ThinkingValue
     {
-        get => _thinkingSet ? _thinking : null;
-        set
-        {
-            if (value is null)
-            {
-                _thinking = null;
-                _thinkingSet = false;
-                return;
-            }
-
-            _thinking = value;
-            _thinkingSet = true;
-        }
+        get => _thinking;
+        set => _thinking = value;
     }
 
     [JsonPropertyName("reasoning_effort")]
@@ -91,19 +56,8 @@ public class ChatRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     internal string? ReasoningEffortValue
     {
-        get => _reasoningEffortSet ? _reasoningEffort : null;
-        set
-        {
-            if (value is null)
-            {
-                _reasoningEffort = null;
-                _reasoningEffortSet = false;
-                return;
-            }
-
-            _reasoningEffort = value;
-            _reasoningEffortSet = true;
-        }
+        get => _reasoningEffort;
+        set => _reasoningEffort = value;
     }
 
     /// <summary>
