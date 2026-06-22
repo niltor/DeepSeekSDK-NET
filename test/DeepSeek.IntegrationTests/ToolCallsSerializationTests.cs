@@ -118,4 +118,25 @@ public class ToolCallsSerializationTests
         Assert.Equal(0, firstToolCall.Index);
         Assert.Equal(firstToolCall.Index, secondToolCall.Index);
     }
+
+    [Fact]
+    public void ChatRequest_SerializesThinkingFields_WithoutDeprecatedPenaltyFields()
+    {
+        var request = new ChatRequest
+        {
+            Messages = [Message.NewUserMessage("Hi")],
+            Model = DeepSeekModels.Pro,
+            Thinking = new Thinking { Type = ThinkingTypes.Disabled },
+            ReasoningEffort = ReasoningEffortTypes.Max,
+        };
+
+        var json = JsonSerializer.Serialize(request, JsonOptions);
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+
+        Assert.False(root.TryGetProperty("frequency_penalty", out _));
+        Assert.False(root.TryGetProperty("presence_penalty", out _));
+        Assert.Equal("disabled", root.GetProperty("thinking").GetProperty("type").GetString());
+        Assert.Equal("max", root.GetProperty("reasoning_effort").GetString());
+    }
 }
