@@ -99,6 +99,7 @@ public class StreamOptions
 
 public class Thinking
 {
+    [JsonPropertyName("type")]
     public string Type { get; set; } = ThinkingTypes.Enabled;
 }
 
