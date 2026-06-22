@@ -204,10 +204,16 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
                 };
             }
 
-            if (options.AdditionalProperties.TryGetValue("reasoning_effort", out var reasoningEffort)
-                && reasoningEffort is string reasoningEffortValue)
+            if (options.AdditionalProperties.TryGetValue("reasoning_effort", out var reasoningEffort))
             {
-                req.ReasoningEffort = reasoningEffortValue;
+                req.ReasoningEffort = reasoningEffort switch
+                {
+                    string reasoningEffortValue => reasoningEffortValue,
+                    _ => throw new ArgumentException(
+                        "The 'reasoning_effort' additional property must be a string.",
+                        nameof(reasoningEffort)
+                    ),
+                };
             }
 
             if (options.AdditionalProperties.TryGetValue("logprobs", out var logprobs) && logprobs is bool logprobsValue)

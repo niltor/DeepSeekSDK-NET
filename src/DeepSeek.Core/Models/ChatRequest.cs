@@ -33,8 +33,15 @@ public class ChatRequest
         get => _thinking ?? new Thinking();
         set
         {
+            if (value is null)
+            {
+                _thinking = null;
+                _thinkingSet = false;
+                return;
+            }
+
             _thinking = value;
-            _thinkingSet = value is not null;
+            _thinkingSet = true;
         }
     }
 
@@ -47,8 +54,15 @@ public class ChatRequest
         get => _reasoningEffort ?? ReasoningEffortTypes.High;
         set
         {
+            if (value is null)
+            {
+                _reasoningEffort = null;
+                _reasoningEffortSet = false;
+                return;
+            }
+
             _reasoningEffort = value;
-            _reasoningEffortSet = value is not null;
+            _reasoningEffortSet = true;
         }
     }
 
@@ -57,11 +71,18 @@ public class ChatRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     internal Thinking? ThinkingValue
     {
-        get => _thinkingSet ? _thinking ?? new Thinking() : null;
+        get => _thinkingSet ? _thinking : null;
         set
         {
+            if (value is null)
+            {
+                _thinking = null;
+                _thinkingSet = false;
+                return;
+            }
+
             _thinking = value;
-            _thinkingSet = value is not null;
+            _thinkingSet = true;
         }
     }
 
@@ -70,11 +91,18 @@ public class ChatRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     internal string? ReasoningEffortValue
     {
-        get => _reasoningEffortSet ? _reasoningEffort ?? ReasoningEffortTypes.High : null;
+        get => _reasoningEffortSet ? _reasoningEffort : null;
         set
         {
+            if (value is null)
+            {
+                _reasoningEffort = null;
+                _reasoningEffortSet = false;
+                return;
+            }
+
             _reasoningEffort = value;
-            _reasoningEffortSet = value is not null;
+            _reasoningEffortSet = true;
         }
     }
 
