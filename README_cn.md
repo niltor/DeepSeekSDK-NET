@@ -15,6 +15,8 @@
 - [x] 支持调用本地模型
 - [x] 对ASP.NET Core的集成支持
 - [x] 函数调用
+- [x] 兼容OpenAI格式的 Responses API（包含语义化 SSE 流式返回）
+- [x] 支持Microsoft.Extensions.AI IChatClient
 
 ## 使用
 
@@ -49,9 +51,14 @@ public DeepSeekClient(HttpClient http, string apiKey);
 > [!TIP]
 > 如果你想调用本地模型，可尝试自定义`HttpClient`，并设置`BaseAddress`为本地地址。
 
+> [!IMPORTANT]
+> DeepSeek 现已支持 `deepseek-v4-pro` 与 `deepseek-v4-flash`，访问新模型时 `base_url` 不变。
+> 旧模型 ID `deepseek-chat` 与 `deepseek-reasoner` 将在 2026-07-24 停止使用。
+> 过渡期内，这两个旧 ID 分别指向 `deepseek-v4-flash` 的非思考模式与思考模式。
+
 ### 调用方法
 
-`DeepSeekClient`类提供了六个异步方法来调用DeepSeek的API:
+`DeepSeekClient`类提供了异步方法来调用DeepSeek的API:
 
 ```csharp
 Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken);
@@ -64,8 +71,57 @@ Task<ChatResponse?> CompletionsAsync(CompletionRequest request, CancellationToke
 
 Task<IAsyncEnumerable<Choice>?> CompletionsStreamAsync(CompletionRequest request, CancellationToken cancellationToken);
 
+Task<ResponseResult?> ResponseAsync(ResponseRequest request, CancellationToken cancellationToken);
+
+IAsyncEnumerable<ResponseStreamEvent> ResponseStreamAsync(ResponseRequest request, CancellationToken cancellationToken);
+
 Task<UserResponse?> GetUserBalanceAsync(CancellationToken cancellationToken);
 ```
+
+### Responses API
+
+DeepSeek 的 Responses API 遵循 OpenAI Responses 格式，调用地址为 `POST /responses`。需要读取
+`output`、思考内容、函数调用、用量或原始 SSE 事件时，可直接使用 `ResponseRequest`、`ResponseResult`
+和 `ResponseStreamEvent`：
+
+```csharp
+var response = await client.ResponseAsync(new ResponseRequest
+{
+    Model = DeepSeekModels.Flash,
+    Instructions = "你是一个简洁的助手。",
+    Input = "法国的首都是什么？",
+    Reasoning = new ResponseReasoningOptions { Effort = "high" },
+}, cancellationToken);
+
+var text = response?.Output
+    .Where(item => item.Type == ResponseInputItemTypes.Message)
+    .SelectMany(item => item.Content ?? [])
+    .Where(part => part.Type == ResponseContentPartTypes.OutputText)
+    .Select(part => part.Text)
+    .FirstOrDefault();
+```
+
+Responses 流式返回使用语义化 SSE 事件，最后以 `response.completed`、`response.incomplete` 或
+`response.failed` 结束，不使用 Chat Completions 的 `[DONE]`：
+
+```csharp
+await foreach (var responseEvent in client.ResponseStreamAsync(
+    new ResponseRequest
+    {
+        Model = DeepSeekModels.Flash,
+        Input = "从一数到三。",
+    }, cancellationToken))
+{
+    if (responseEvent.Type == ResponseEventTypes.OutputTextDelta)
+    {
+        Console.Write(responseEvent.Delta);
+    }
+}
+```
+
+DeepSeek Responses API 是无状态的，每次请求都需要在 `input` 中传回完整历史；不支持服务端的
+`previous_response_id`、`conversation` 和响应存储。详见[官方 Responses API 指南](https://api-docs.deepseek.com/zh-cn/guides/responses_api)
+和[创建 Response API 文档](https://api-docs.deepseek.com/zh-cn/api/create-response)。
 
 ### 获取模型列表示例
 
@@ -98,7 +154,7 @@ var request = new ChatRequest
         Message.NewUserMessage("请翻译'它们害怕极了！'为英语!")
     ],
     // 指定模型
-    Model = Constant.Model.ChatModel
+    Model = DeepSeekModels.Flash
 };
 
 var chatResponse = await client.ChatAsync(request, new CancellationToken());
@@ -122,7 +178,7 @@ var request = new ChatRequest
         Message.NewUserMessage("请翻译'它们害怕极了！'为英语!")
     ],
     // 指定模型
-    Model = Constant.Model.ChatModel
+    Model = DeepSeekModels.Flash
 };
 
 var choices = client.ChatStreamAsync(request, new CancellationToken());
@@ -174,7 +230,7 @@ public static async Task CallFunctionExampleAsync(DeepSeekClient client)
     var request = new ChatRequest
     {
         Messages = [Message.NewUserMessage("What is the weather in New York today?")],
-        Model = DeepSeekModels.ChatModel,
+        Model = DeepSeekModels.Flash,
         Stream = true,
         // 添加tools的定义
         Tools =
@@ -281,6 +337,22 @@ return res?.Choices.First().Message?.Content;
 > [!TIP]
 > 更多[使用示例](https://github.com/niltor/DeepSeekSDK-NET/tree/dev/sample/Sample).
 >
+
+
+## Microsoft.Extensions.AI Integration
+
+现有的 `DeepSeekChatClient` 使用 Chat Completions。如果要通过 `Microsoft.Extensions.AI` 使用 Responses API，
+请使用 `DeepSeekResponsesChatClient`：
+
+```csharp
+using DeepSeek.Core.Adapters;
+using Microsoft.Extensions.AI;
+
+builder.Services.AddChatClient(sp => new DeepSeekResponsesChatClient(apiKey));
+```
+
+该适配器会将输出文本映射为 `TextContent`，思考内容映射为 `TextReasoningContent`，函数调用映射为
+`FunctionCallContent`，用量映射为 `UsageDetails`；原始 `ResponseResult` 可从 `ChatResponse.RawRepresentation` 获取。
 
 ## 在ASP.NET Core中使用
 

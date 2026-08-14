@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/sample/">
+    <Project Path="sample/AspNetCoreSample/AspNetCoreSample.csproj" />
+    <Project Path="sample/Sample/Sample.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/DeepSeek.AspNetCore/DeepSeek.AspNetCore.csproj" />
+    <Project Path="src/DeepSeek.Core/DeepSeek.Core.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/DeepSeek.IntegrationTests/DeepSeek.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

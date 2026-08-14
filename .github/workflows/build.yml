@@ -1,0 +1,74 @@
+name: Build and publish NuGet packages
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out merged source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore DeepSeek.slnx
+
+      - name: Build
+        run: dotnet build DeepSeek.slnx --configuration Release --no-restore
+
+      - name: Run tests
+        run: >-
+          dotnet test test/DeepSeek.IntegrationTests/DeepSeek.IntegrationTests.csproj
+          --configuration Release --no-restore
+          --filter "FullyQualifiedName!~DeepSeekLiveApiTests"
+
+      - name: Pack
+        run: |
+          dotnet pack src/DeepSeek.AspNetCore/DeepSeek.AspNetCore.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            --output ./pack
+          dotnet pack src/DeepSeek.Core/DeepSeek.Core.csproj \
+            --configuration Release \
+            --no-build \
+            --no-restore \
+            --output ./pack
+
+      - name: Get short-lived NuGet API key
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish packages to NuGet.org
+        shell: bash
+        run: |
+          for package in ./pack/*.nupkg; do
+            dotnet nuget push "$package" \
+              --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done

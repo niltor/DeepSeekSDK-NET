@@ -8,9 +8,9 @@ public class CompletionRequest
     /// </summary>
     public required string Prompt { get; set; }
     /// <summary>
-    /// 使用的模型的 ID。您可以使用 deepseek-chat 或者 deepseek-reasoner。
+    /// 使用的模型的 ID。您可以使用 deepseek-v4-pro 或者 deepseek-v4-flash。
     /// </summary>
-    public string Model { get; set; } = DeepSeekModels.ChatModel;
+    public string Model { get; set; } = DeepSeekModels.Flash;
 
     /// <summary>
     /// output prompt

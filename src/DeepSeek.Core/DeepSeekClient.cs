@@ -1,4 +1,4 @@
-﻿using DeepSeek.Core.Models;
+using DeepSeek.Core.Models;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -19,6 +19,10 @@ public class DeepSeekClient
     /// chat endpoint
     /// </summary>
     public string ChatEndpoint { get; private set; } = "chat/completions";
+    /// <summary>
+    /// OpenAI-compatible Responses API endpoint.
+    /// </summary>
+    public string ResponsesEndpoint { get; private set; } = "responses";
     public string CompletionEndpoint { get; private set; } = "completions";
     public readonly string UserBalanceEndpoint = "user/balance";
 
@@ -84,6 +88,11 @@ public class DeepSeekClient
         ChatEndpoint = endpoint;
     }
 
+    public void SetResponsesEndpoint(string endpoint)
+    {
+        ResponsesEndpoint = endpoint;
+    }
+
     public void SetCompletionEndpoint(string endpoint)
     {
         CompletionEndpoint = endpoint;
@@ -127,6 +136,152 @@ public class DeepSeekClient
         }
         return JsonSerializer.Deserialize<ChatResponse>(resContent, JsonSerializerOptions);
     }
+
+    /// <summary>
+    /// Creates a non-streaming response using the OpenAI-compatible Responses API.
+    /// </summary>
+    public async Task<ResponseResult?> ResponseAsync(
+        ResponseRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        request.Stream = false;
+        var content = new StringContent(
+            JsonSerializer.Serialize(request, typeof(ResponseRequest), JsonSerializerOptions),
+            Encoding.UTF8,
+            "application/json"
+        );
+
+        var response = await Http.PostAsync(ResponsesEndpoint, content, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var res = await response.Content.ReadAsStringAsync(cancellationToken);
+            ErrorMsg = response.StatusCode + res;
+            return null;
+        }
+
+        var resContent = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(resContent))
+        {
+            ErrorMsg = "empty response";
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<ResponseResult>(resContent, JsonSerializerOptions);
+    }
+
+    /// <summary>
+    /// Streams semantic SSE events from the OpenAI-compatible Responses API.
+    /// </summary>
+    public async IAsyncEnumerable<ResponseStreamEvent> ResponseStreamAsync(
+        ResponseRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        request.Stream = true;
+        var content = new StringContent(
+            JsonSerializer.Serialize(request, typeof(ResponseRequest), JsonSerializerOptions),
+            Encoding.UTF8,
+            "application/json"
+        );
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, ResponsesEndpoint)
+        {
+            Content = content,
+        };
+
+        using var response = await Http.SendAsync(
+            requestMessage,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken
+        );
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var res = await response.Content.ReadAsStringAsync(cancellationToken);
+            ErrorMsg = response.StatusCode + res;
+            yield break;
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream);
+        string? eventName = null;
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var line = await reader.ReadLineAsync(cancellationToken);
+            if (line is null)
+            {
+                break;
+            }
+
+            if (line.Length == 0)
+            {
+                eventName = null;
+                continue;
+            }
+
+            if (line.StartsWith("event:", StringComparison.OrdinalIgnoreCase))
+            {
+                eventName = line["event:".Length..].Trim();
+                continue;
+            }
+
+            if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var json = line["data:".Length..].Trim();
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                continue;
+            }
+
+            if (json == StreamDoneSign)
+            {
+                yield break;
+            }
+
+            var streamEvent = JsonSerializer.Deserialize<ResponseStreamEvent>(json, JsonSerializerOptions);
+            if (streamEvent is null)
+            {
+                continue;
+            }
+
+            streamEvent.EventName = eventName;
+            if (string.IsNullOrWhiteSpace(streamEvent.Type))
+            {
+                streamEvent.Type = eventName ?? string.Empty;
+            }
+
+            yield return streamEvent;
+
+            if (
+                streamEvent.Type is ResponseEventTypes.Completed
+                    or ResponseEventTypes.Incomplete
+                    or ResponseEventTypes.Failed
+            )
+            {
+                yield break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Alias matching the terminology used by the OpenAI .NET SDK.
+    /// </summary>
+    public Task<ResponseResult?> CreateResponseAsync(
+        ResponseRequest request,
+        CancellationToken cancellationToken
+    ) => ResponseAsync(request, cancellationToken);
+
+    /// <summary>
+    /// Alias matching the terminology used by the OpenAI .NET SDK.
+    /// </summary>
+    public IAsyncEnumerable<ResponseStreamEvent> CreateResponseStreamingAsync(
+        ResponseRequest request,
+        CancellationToken cancellationToken
+    ) => ResponseStreamAsync(request, cancellationToken);
 
     /// <summary>
     /// streaming output
@@ -227,7 +382,7 @@ public class DeepSeekClient
         string endpoint = CompletionEndpoint;
         if (Http.BaseAddress?.OriginalString == BaseAddress)
         {
-            endpoint = "/beta" + CompletionEndpoint;
+            endpoint = "beta/" + CompletionEndpoint;
         }
         await Task.Delay(100);
         var response = await Http.PostAsync(endpoint, content, cancellationToken);
@@ -259,7 +414,7 @@ public class DeepSeekClient
         string endpoint = CompletionEndpoint;
         if (Http.BaseAddress?.OriginalString == BaseAddress)
         {
-            endpoint = "/beta" + CompletionEndpoint;
+            endpoint = "beta/" + CompletionEndpoint;
         }
         var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpoint)
         {

@@ -1,50 +1,52 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFrameworks>net8.0</TargetFrameworks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
-    <Authors>NilTor,AterDev</Authors>
-    <Company>Geethin</Company>
-    <Description>DeepSeek API SDK</Description>
-    <PackageReleaseNotes>
-			1. Add ChatStreamWithStringAsync to get raw response.
-		</PackageReleaseNotes>
-    <PackageProjectUrl>https://github.com/niltor/DeepSeekSDK-NET</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/niltor/DeepSeekSDK-NET</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageTags>LLM,AI,DeepSeek,API,SDK</PackageTags>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageIcon>logo.jpg</PackageIcon>
-    <Version>1.2.0</Version>
-    <PackageId>Ater.DeepSeek.AspNetCore</PackageId>
-    <Title>DeepSeek.AspNetCore</Title>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Copyright />
-    <OutputType>Library</OutputType>
-    <NoWarn>1701;1702;1591;1570</NoWarn>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageOutputPath>./pack</PackageOutputPath>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\DeepSeek.Core\DeepSeek.Core.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\logo.jpg">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-    <None Include="..\..\README.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-    <None Include="..\..\README_cn.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <Authors>NilTor,AterDev</Authors>
+        <Company>Geethin</Company>
+        <Description>DeepSeek API SDK for ASP.NET Core with Microsoft.Extensions.AI integration</Description>
+        <PackageReleaseNotes>
+            1. Added OpenAI-compatible Responses API support, including non-streaming and semantic SSE streaming responses.
+            2. Added Microsoft.Extensions.AI IChatClient support for the Responses API.
+            3. Added response models, usage mapping, function-call mapping, tests, and documentation.
+        </PackageReleaseNotes>
+        <PackageProjectUrl>https://github.com/niltor/DeepSeekSDK-NET</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/niltor/DeepSeekSDK-NET</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>LLM,AI,DeepSeek,API,SDK,AspNetCore,Microsoft.Extensions.AI</PackageTags>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <PackageIcon>logo.jpg</PackageIcon>
+        <Version>1.5.0</Version>
+        <PackageId>Ater.DeepSeek.AspNetCore</PackageId>
+        <Title>DeepSeek.AspNetCore</Title>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <Copyright />
+        <OutputType>Library</OutputType>
+        <NoWarn>1701;1702;1591;1570</NoWarn>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageOutputPath>./pack</PackageOutputPath>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\DeepSeek.Core\DeepSeek.Core.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="..\..\logo.jpg">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None Include="..\..\README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None Include="..\..\README_cn.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
 </Project>
