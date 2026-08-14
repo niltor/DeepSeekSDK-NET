@@ -15,6 +15,7 @@
 - [x] Local model support
 - [x] ASP.NET Core integration support
 - [x] Function call
+- [x] OpenAI-compatible Responses API (including semantic SSE streaming)
 - [x] Support Microsoft.Extensions.AI IChatClient
 
 ## Usage Requirements
@@ -59,7 +60,7 @@ The default timeout for internal HttpClient is 120 seconds, which can be set bef
 
 ### Calling method
 
-`DeepSeekClient` class provides six asynchronous methods to call DeepSeek's API:
+`DeepSeekClient` class provides asynchronous methods to call DeepSeek's API:
 
 ```csharp
 Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken);
@@ -72,9 +73,59 @@ Task<ChatResponse?> CompletionsAsync(CompletionRequest request, CancellationToke
 
 Task<IAsyncEnumerable<Choice>?> CompletionsStreamAsync(CompletionRequest request, CancellationToken cancellationToken);
 
+Task<ResponseResult?> ResponseAsync(ResponseRequest request, CancellationToken cancellationToken);
+
+IAsyncEnumerable<ResponseStreamEvent> ResponseStreamAsync(ResponseRequest request, CancellationToken cancellationToken);
+
 Task<UserResponse?> GetUserBalanceAsync(CancellationToken cancellationToken);
 
 ```
+
+### Responses API
+
+DeepSeek's Responses API follows the OpenAI Responses format and uses `POST /responses`. Use the native
+`ResponseRequest`, `ResponseResult`, and `ResponseStreamEvent` models when you need response items, reasoning,
+function calls, usage details, or the original SSE events.
+
+```csharp
+var response = await client.ResponseAsync(new ResponseRequest
+{
+    Model = DeepSeekModels.Flash,
+    Instructions = "You are a concise assistant.",
+    Input = "What is the capital of France?",
+    Reasoning = new ResponseReasoningOptions { Effort = "high" },
+}, cancellationToken);
+
+var text = response?.Output
+    .Where(item => item.Type == ResponseInputItemTypes.Message)
+    .SelectMany(item => item.Content ?? [])
+    .Where(part => part.Type == ResponseContentPartTypes.OutputText)
+    .Select(part => part.Text)
+    .FirstOrDefault();
+```
+
+Responses streaming uses semantic SSE events and ends with `response.completed`, `response.incomplete`, or
+`response.failed`; it does not use the Chat Completions `[DONE]` sentinel:
+
+```csharp
+await foreach (var responseEvent in client.ResponseStreamAsync(
+    new ResponseRequest
+    {
+        Model = DeepSeekModels.Flash,
+        Input = "Count from one to three.",
+    }, cancellationToken))
+{
+    if (responseEvent.Type == ResponseEventTypes.OutputTextDelta)
+    {
+        Console.Write(responseEvent.Delta);
+    }
+}
+```
+
+DeepSeek's Responses API is stateless. Send the complete input history on each request; server-side
+`previous_response_id`, `conversation`, and response storage are not supported. See the
+[official Responses API guide](https://api-docs.deepseek.com/zh-cn/guides/responses_api) and
+[Create Response reference](https://api-docs.deepseek.com/zh-cn/api/create-response) for the supported fields.
 
 ### List Models Sample
 
@@ -292,12 +343,19 @@ return res?.Choices.First().Message?.Content;
 
 ## Microsoft.Extensions.AI Integration
 
-Support`IChatClient`interface
+The existing `DeepSeekChatClient` uses Chat Completions. To use the Responses API through
+`Microsoft.Extensions.AI`, use `DeepSeekResponsesChatClient`:
 
 ```csharp
-// use Microsoft.Extensions.AI IChatClient
-builder.Services.AddChatClient(sp => new DeepSeekChatClient(apiKey));
+using DeepSeek.Core.Adapters;
+using Microsoft.Extensions.AI;
+
+builder.Services.AddChatClient(sp => new DeepSeekResponsesChatClient(apiKey));
 ```
+
+The adapter maps response text to `TextContent`, reasoning to `TextReasoningContent`, function calls to
+`FunctionCallContent`, and token usage to `UsageDetails`. The original `ResponseResult` is available through
+`ChatResponse.RawRepresentation`.
 
 ## ASP.NET Core Integration
 

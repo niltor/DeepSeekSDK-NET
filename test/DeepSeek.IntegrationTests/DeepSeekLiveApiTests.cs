@@ -5,7 +5,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 using DeepSeek.Core;
+using DeepSeek.Core.Adapters;
 using DeepSeek.Core.Models;
+using Microsoft.Extensions.AI;
 using Xunit;
 
 namespace DeepSeek.IntegrationTests;
@@ -212,6 +214,84 @@ public class DeepSeekLiveApiTests : IClassFixture<DeepSeekIntegrationFixture>
 
         Assert.NotNull(toolResponse);
         Assert.False(string.IsNullOrWhiteSpace(toolResponse!.Choices[0].Message?.Content));
+    }
+
+    [Fact]
+    public async Task ResponseAsync_ReturnsOutputText()
+    {
+        var response = await _client.ResponseAsync(
+            new ResponseRequest
+            {
+                Model = DeepSeekModels.Flash,
+                Input = "Reply with exactly: responses-ok",
+                Reasoning = new ResponseReasoningOptions { Effort = ReasoningEffortTypes.None },
+                MaxOutputTokens = 32,
+                Temperature = 0,
+            },
+            _fixture.CreateToken()
+        );
+
+        Assert.NotNull(response);
+        Assert.Equal("completed", response!.Status);
+        Assert.NotEmpty(response.Output);
+        Assert.False(string.IsNullOrWhiteSpace(response.OutputText));
+    }
+
+    [Fact]
+    public async Task ResponseStreamAsync_ReturnsSemanticTextEvents()
+    {
+        var events = new List<ResponseStreamEvent>();
+        await foreach (
+            var responseEvent in _client.ResponseStreamAsync(
+                new ResponseRequest
+                {
+                    Model = DeepSeekModels.Flash,
+                    Input = "Reply with exactly: responses-stream-ok",
+                    Reasoning = new ResponseReasoningOptions { Effort = ReasoningEffortTypes.None },
+                    MaxOutputTokens = 32,
+                    Temperature = 0,
+                },
+                _fixture.CreateToken()
+            )
+        )
+        {
+            events.Add(responseEvent);
+        }
+
+        var text = string.Concat(
+            events
+                .Where(responseEvent => responseEvent.Type == ResponseEventTypes.OutputTextDelta)
+                .Select(responseEvent => responseEvent.Delta)
+        );
+
+        Assert.NotEmpty(events);
+        Assert.Equal(ResponseEventTypes.Completed, events[^1].Type);
+        Assert.False(string.IsNullOrWhiteSpace(text));
+    }
+
+    [Fact]
+    public async Task ResponsesChatClient_ReturnsMicrosoftExtensionsAIResponse()
+    {
+        using var chatClient = new DeepSeekResponsesChatClient(_client);
+        var response = await chatClient.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "Reply with exactly: microsoft-ai-responses-ok")],
+            new ChatOptions
+            {
+                ModelId = DeepSeekModels.Flash,
+                MaxOutputTokens = 32,
+                Temperature = 0,
+                AdditionalProperties = new AdditionalPropertiesDictionary
+                {
+                    ["reasoning_effort"] = ReasoningEffortTypes.None,
+                },
+            },
+            _fixture.CreateToken()
+        );
+
+        Assert.NotNull(response);
+        Assert.False(string.IsNullOrWhiteSpace(response.Text));
+        Assert.NotNull(response.ResponseId);
+        Assert.IsType<ResponseResult>(response.RawRepresentation);
     }
 
     private static string GetWeather(WeatherDto dto)

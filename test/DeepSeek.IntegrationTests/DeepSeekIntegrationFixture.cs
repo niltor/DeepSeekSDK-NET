@@ -13,9 +13,10 @@ public sealed class DeepSeekIntegrationFixture : IDisposable
             .AddUserSecrets<DeepSeekIntegrationFixture>()
             .Build();
 
-        ApiKey = configuration["apiKey"]
+        ApiKey = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY")
+            ?? configuration["apiKey"]
             ?? throw new InvalidOperationException(
-                "apiKey is not configured. Set it with `dotnet user-secrets set \"apiKey\" \"<your-key>\" --project test/DeepSeek.IntegrationTests/DeepSeek.IntegrationTests.csproj`."
+                "apiKey is not configured. Set the DEEPSEEK_API_KEY environment variable or use `dotnet user-secrets set \"apiKey\" \"<your-key>\" --project test/DeepSeek.IntegrationTests/DeepSeek.IntegrationTests.csproj`."
             );
 
         Client = new DeepSeekClient(ApiKey);
