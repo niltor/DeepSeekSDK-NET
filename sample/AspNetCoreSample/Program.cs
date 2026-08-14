@@ -7,7 +7,8 @@ using Microsoft.Extensions.AI;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var apiKey = builder.Configuration["apiKey"];
+var apiKey = builder.Configuration["apiKey"]
+    ?? throw new InvalidOperationException("The 'apiKey' configuration value is required.");
 builder.Services.AddDeepSeek(option =>
 {
     option.BaseAddress = new Uri("https://api.deepseek.com");
