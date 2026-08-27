@@ -11,6 +11,7 @@
             1. Added OpenAI-compatible Responses API support, including non-streaming and semantic SSE streaming responses.
             2. Added Microsoft.Extensions.AI IChatClient support for the Responses API.
             3. Added response models, usage mapping, function-call mapping, tests, and documentation.
+            4. Added deepseek-v4-flash-vision-exp multimodal content blocks and Files API support.
         </PackageReleaseNotes>
         <PackageProjectUrl>https://github.com/niltor/DeepSeekSDK-NET</PackageProjectUrl>
         <RepositoryUrl>https://github.com/niltor/DeepSeekSDK-NET</RepositoryUrl>

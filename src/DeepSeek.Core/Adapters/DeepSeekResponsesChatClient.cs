@@ -12,24 +12,32 @@ namespace DeepSeek.Core.Adapters;
 public sealed class DeepSeekResponsesChatClient : IChatClient
 {
     private readonly DeepSeekClient _client;
+    private readonly bool _ownsClient;
 
     public DeepSeekResponsesChatClient(string apiKey)
-        : this(new DeepSeekClient(apiKey)) { }
+        : this(new DeepSeekClient(apiKey), ownsClient: true) { }
 
     public DeepSeekResponsesChatClient(HttpClient httpClient)
-        : this(new DeepSeekClient(httpClient)) { }
+        : this(new DeepSeekClient(httpClient), ownsClient: false) { }
 
     public DeepSeekResponsesChatClient(HttpClient httpClient, string apiKey)
-        : this(new DeepSeekClient(httpClient, apiKey)) { }
+        : this(new DeepSeekClient(httpClient, apiKey), ownsClient: false) { }
 
     public DeepSeekResponsesChatClient(DeepSeekClient client)
+        : this(client, ownsClient: false) { }
+
+    private DeepSeekResponsesChatClient(DeepSeekClient client, bool ownsClient)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
+        _ownsClient = ownsClient;
     }
 
     public void Dispose()
     {
-        // The HttpClient is owned by the caller or by DeepSeekClient.
+        if (_ownsClient)
+        {
+            _client.Dispose();
+        }
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null)
@@ -223,15 +231,25 @@ public sealed class DeepSeekResponsesChatClient : IChatClient
         {
             foreach (var functionResult in functionResults)
             {
-                yield return ResponseInputItem.NewFunctionCallOutput(
-                    functionResult.CallId,
-                    SerializeToolResult(functionResult.Result)
-                );
+                var outputContentParts = MapToolResultContent(functionResult.Result);
+                yield return outputContentParts is not null
+                    ? ResponseInputItem.NewFunctionCallOutput(
+                        functionResult.CallId,
+                        outputContentParts
+                    )
+                    : ResponseInputItem.NewFunctionCallOutput(
+                        functionResult.CallId,
+                        SerializeToolResult(functionResult.Result)
+                    );
             }
 
-            if (functionResults.Length == 0 && !string.IsNullOrWhiteSpace(message.Text))
+            if (functionResults.Length == 0)
             {
-                yield return ResponseInputItem.NewUserMessage(message.Text);
+                var toolContent = MapMessageContent(message);
+                if (toolContent.Count > 0)
+                {
+                    yield return ResponseInputItem.NewUserMessage(toolContent);
+                }
             }
 
             yield break;
@@ -253,9 +271,13 @@ public sealed class DeepSeekResponsesChatClient : IChatClient
         var functionCalls = message.Contents.OfType<FunctionCallContent>().ToArray();
         if (functionCalls.Length > 0)
         {
-            if (!string.IsNullOrWhiteSpace(message.Text))
+            var functionMessageContent = MapMessageContent(message);
+            if (functionMessageContent.Count > 0)
             {
-                yield return ResponseInputItem.NewMessage(message.Role.Value, message.Text);
+                yield return ResponseInputItem.NewMessage(
+                    message.Role.Value,
+                    functionMessageContent
+                );
             }
 
             foreach (var functionCall in functionCalls)
@@ -270,7 +292,54 @@ public sealed class DeepSeekResponsesChatClient : IChatClient
             yield break;
         }
 
-        yield return ResponseInputItem.NewMessage(message.Role.Value, message.Text);
+        var contentParts = MapMessageContent(message);
+        if (contentParts.Count > 0)
+        {
+            yield return ResponseInputItem.NewMessage(message.Role.Value, contentParts);
+        }
+        else if (!string.IsNullOrWhiteSpace(message.Text))
+        {
+            yield return ResponseInputItem.NewMessage(message.Role.Value, message.Text);
+        }
+    }
+
+    private static List<ResponseContentPart> MapMessageContent(ChatMessage message)
+    {
+        var contentParts = new List<ResponseContentPart>();
+        foreach (var content in message.Contents)
+        {
+            switch (content)
+            {
+                case TextContent text when !string.IsNullOrEmpty(text.Text):
+                    contentParts.Add(ResponseContentPart.CreateInputTextPart(text.Text));
+                    break;
+                case UriContent uri when IsImageMediaType(uri.MediaType):
+                    contentParts.Add(
+                        ResponseContentPart.CreateInputImagePart(GetUriString(uri.Uri))
+                    );
+                    break;
+                case DataContent data when IsImageMediaType(data.MediaType):
+                    contentParts.Add(
+                        ResponseContentPart.CreateInputImagePart(data.Uri)
+                    );
+                    break;
+                case HostedFileContent file:
+                    contentParts.Add(ResponseContentPart.CreateInputFilePart(file.FileId));
+                    break;
+            }
+        }
+
+        return contentParts;
+    }
+
+    private static bool IsImageMediaType(string? mediaType)
+    {
+        return mediaType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string GetUriString(Uri uri)
+    {
+        return uri.IsAbsoluteUri ? uri.AbsoluteUri : uri.ToString();
     }
 
     private static string SerializeToolResult(object? result)
@@ -283,6 +352,40 @@ public sealed class DeepSeekResponsesChatClient : IChatClient
             JsonElement element => element.GetRawText(),
             _ => JsonSerializer.Serialize(result),
         };
+    }
+
+    private static List<ResponseContentPart>? MapToolResultContent(object? result)
+    {
+        if (result is not IEnumerable<AIContent> contents)
+        {
+            return null;
+        }
+
+        var contentParts = new List<ResponseContentPart>();
+        foreach (var content in contents)
+        {
+            switch (content)
+            {
+                case TextContent text when !string.IsNullOrEmpty(text.Text):
+                    contentParts.Add(ResponseContentPart.CreateInputTextPart(text.Text));
+                    break;
+                case UriContent uri when IsImageMediaType(uri.MediaType):
+                    contentParts.Add(
+                        ResponseContentPart.CreateInputImagePart(GetUriString(uri.Uri))
+                    );
+                    break;
+                case DataContent data when IsImageMediaType(data.MediaType):
+                    contentParts.Add(
+                        ResponseContentPart.CreateInputImagePart(data.Uri)
+                    );
+                    break;
+                case HostedFileContent file:
+                    contentParts.Add(ResponseContentPart.CreateInputFilePart(file.FileId));
+                    break;
+            }
+        }
+
+        return contentParts.Count == 0 ? null : contentParts;
     }
 
     private static List<ResponseTool>? MapTools(IList<AITool>? tools)
@@ -374,9 +477,10 @@ public sealed class DeepSeekResponsesChatClient : IChatClient
             {
                 foreach (var part in outputItem.Content ?? [])
                 {
-                    if (!string.IsNullOrEmpty(part.Text))
+                    var content = MapOutputContentPart(part);
+                    if (content is not null)
                     {
-                        message.Contents.Add(new TextContent(part.Text));
+                        message.Contents.Add(content);
                     }
                 }
             }
@@ -426,11 +530,79 @@ public sealed class DeepSeekResponsesChatClient : IChatClient
         return chatResponse;
     }
 
+    private static AIContent? MapOutputContentPart(ResponseContentPart part)
+    {
+        if (
+            part.Type is (
+                ResponseContentPartTypes.OutputText
+                or ResponseContentPartTypes.InputText
+                or ResponseContentPartTypes.ReasoningText
+            )
+            && !string.IsNullOrEmpty(part.Text)
+        )
+        {
+            return part.Type == ResponseContentPartTypes.ReasoningText
+                ? new TextReasoningContent(part.Text)
+                : new TextContent(part.Text);
+        }
+
+        if (!string.IsNullOrWhiteSpace(part.FileId))
+        {
+            return new HostedFileContent(part.FileId) { MediaType = "image/*" };
+        }
+
+        if (!string.IsNullOrWhiteSpace(part.ImageUrl))
+        {
+            return part.ImageUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                ? MapDataContent(part.ImageUrl)
+                : new UriContent(part.ImageUrl, "image/*");
+        }
+
+        return null;
+    }
+
+    private static DataContent? MapDataContent(string dataUri)
+    {
+        var commaIndex = dataUri.IndexOf(',');
+        if (
+            !dataUri.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+            || commaIndex <= "data:".Length
+        )
+        {
+            return null;
+        }
+
+        var metadata = dataUri["data:".Length..commaIndex];
+        var mediaType = metadata.Split(';', 2)[0];
+        if (string.IsNullOrWhiteSpace(mediaType))
+        {
+            mediaType = "application/octet-stream";
+        }
+
+        try
+        {
+            return new DataContent(dataUri, mediaType);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
     private static ChatResponseUpdate? MapStreamingEvent(
         ResponseStreamEvent responseEvent,
         IReadOnlyDictionary<string, (string CallId, string Name, string Arguments)> functionCalls
     )
     {
+        if (responseEvent.Part is { } part)
+        {
+            var content = MapOutputContentPart(part);
+            if (content is not null)
+            {
+                return new ChatResponseUpdate(ChatRole.Assistant, [content]);
+            }
+        }
+
         ChatResponseUpdate? update = responseEvent.Type switch
         {
             ResponseEventTypes.ReasoningTextDelta when !string.IsNullOrEmpty(responseEvent.Delta)

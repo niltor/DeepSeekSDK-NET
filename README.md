@@ -17,6 +17,8 @@
 - [x] Function call
 - [x] OpenAI-compatible Responses API (including semantic SSE streaming)
 - [x] Support Microsoft.Extensions.AI IChatClient
+- [x] Multimodal vision model `deepseek-v4-flash-vision-exp`
+- [x] Files API (upload, list, retrieve, and delete images)
 
 ## Usage Requirements
 
@@ -54,9 +56,10 @@ The default timeout for internal HttpClient is 120 seconds, which can be set bef
 > If you want to call a local model, try customizing `HttpClient` and setting `BaseAddress` to the local address.
 
 > [!IMPORTANT]
-> DeepSeek now supports `deepseek-v4-pro` and `deepseek-v4-flash` on the same `base_url`.
-> The legacy model IDs `deepseek-chat` and `deepseek-reasoner` will stop working on 2026-07-24.
-> During the transition period, those legacy IDs point to the non-thinking and thinking modes of `deepseek-v4-flash`.
+> DeepSeek supports `deepseek-v4-pro`, `deepseek-v4-flash`, and the multimodal
+> `deepseek-v4-flash-vision-exp` model on the same `base_url`.
+> Use the V4 model IDs for new requests; the legacy `deepseek-chat` and
+> `deepseek-reasoner` IDs are retired.
 
 ### Calling method
 
@@ -77,9 +80,84 @@ Task<ResponseResult?> ResponseAsync(ResponseRequest request, CancellationToken c
 
 IAsyncEnumerable<ResponseStreamEvent> ResponseStreamAsync(ResponseRequest request, CancellationToken cancellationToken);
 
+Task<FileObject?> CreateFileAsync(Stream file, string fileName, FileUploadOptions? options = null, CancellationToken cancellationToken = default);
+
+Task<FileListResponse?> ListFilesAsync(FileListOptions? options = null, CancellationToken cancellationToken = default);
+
+Task<FileObject?> RetrieveFileAsync(string fileId, CancellationToken cancellationToken = default);
+
+Task<FileDeleteResponse?> DeleteFileAsync(string fileId, CancellationToken cancellationToken = default);
+
 Task<UserResponse?> GetUserBalanceAsync(CancellationToken cancellationToken);
 
 ```
+
+### Multimodal Vision and Files API
+
+`deepseek-v4-flash-vision-exp` uses the existing `POST /chat/completions` endpoint, but a user
+message's `content` can be an array of content blocks. Inline Base64 data URLs, public image URLs,
+and Files API `file_id` references are supported:
+
+```csharp
+var response = await client.ChatAsync(new ChatRequest
+{
+    Model = DeepSeekModels.Vision,
+    Messages =
+    [
+        Message.NewUserMessage(
+        [
+            ChatMessageContentPart.CreateTextPart("Describe this image."),
+            ChatMessageContentPart.CreateImageUrlPart(
+                "data:image/jpeg;base64,<BASE64_DATA>",
+                ImageDetailTypes.High),
+        ]),
+    ],
+}, cancellationToken);
+
+Console.WriteLine(response?.Choices[0].Message?.GetTextContent());
+```
+
+For larger images or images reused across requests, upload once and reference the returned file ID:
+
+```csharp
+await using var image = File.OpenRead("image.jpg");
+var file = await client.CreateFileAsync(
+    image,
+    "image.jpg",
+    new FileUploadOptions { ContentType = "image/jpeg" },
+    cancellationToken);
+if (file is null)
+{
+    throw new InvalidOperationException(client.ErrorMsg ?? "File upload failed.");
+}
+
+var response = await client.ChatAsync(new ChatRequest
+{
+    Model = DeepSeekModels.Vision,
+    Messages =
+    [
+        Message.NewUserMessage(
+        [
+            ChatMessageContentPart.CreateTextPart("Read the text in this image."),
+            ChatMessageContentPart.CreateFilePart(file.Id),
+        ]),
+    ],
+}, cancellationToken);
+
+var files = await client.ListFilesAsync(
+    new FileListOptions { Purpose = FilePurposes.UserData },
+    cancellationToken);
+var metadata = await client.RetrieveFileAsync(file.Id, cancellationToken);
+await client.DeleteFileAsync(file.Id, cancellationToken);
+```
+
+`Message.Content` remains a string for source compatibility. When content blocks are used,
+individual text, image, and file blocks are available through `ContentParts`. Responses uses a
+different image block shape: `ResponseContentPart.CreateInputImagePart(...)` creates an
+`input_image`, while `ResponseContentPart.CreateInputFilePart(...)` references a Files API file.
+See the official [vision guide](https://api-docs.deepseek.com/zh-cn/guides/vision),
+[Files API guide](https://api-docs.deepseek.com/zh-cn/guides/files_api), and
+[upload file reference](https://api-docs.deepseek.com/zh-cn/api/create-file) for limits and fields.
 
 ### Responses API
 
