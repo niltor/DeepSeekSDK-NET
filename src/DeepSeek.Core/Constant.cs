@@ -4,6 +4,10 @@ public class DeepSeekModels
 {
     public const string Pro = "deepseek-v4-pro";
     public const string Flash = "deepseek-v4-flash";
+    public const string FlashVisionExperimental = "deepseek-v4-flash-vision-exp";
+    public const string FlashVision = FlashVisionExperimental;
+    public const string VisionExperimental = FlashVisionExperimental;
+    public const string Vision = FlashVisionExperimental;
 }
 
 public class ResponseFormatTypes
@@ -44,6 +48,7 @@ public class ResponseInputItemTypes
     public const string Message = "message";
     public const string FunctionCall = "function_call";
     public const string FunctionCallOutput = "function_call_output";
+    public const string CustomToolCallOutput = "custom_tool_call_output";
     public const string Reasoning = "reasoning";
     public const string WebSearchCall = "web_search_call";
 }
@@ -51,6 +56,7 @@ public class ResponseInputItemTypes
 public class ResponseContentPartTypes
 {
     public const string InputText = "input_text";
+    public const string InputImage = "input_image";
     public const string OutputText = "output_text";
     public const string ReasoningText = "reasoning_text";
 }

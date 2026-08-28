@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
@@ -163,6 +164,11 @@ public class ResponseTool
 /// </summary>
 public class ResponseInputItem
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        TypeInfoResolver = SourceGenerationContext.Default,
+    };
+
     public string Type { get; set; } = ResponseInputItemTypes.Message;
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -184,8 +190,53 @@ public class ResponseInputItem
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Arguments { get; set; }
 
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonIgnore]
     public string? Output { get; set; }
+
+    /// <summary>
+    /// Optional multimodal output for a function-call output item. When set,
+    /// the JSON <c>output</c> property is serialized as a content-part array.
+    /// </summary>
+    [JsonIgnore]
+    public IList<ResponseContentPart>? OutputContentParts { get; set; }
+
+    [JsonPropertyName("output")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonNode? OutputValue
+    {
+        get
+        {
+            if (OutputContentParts is not null)
+            {
+                return JsonSerializer.SerializeToNode(
+                    OutputContentParts.ToList(),
+                    JsonOptions
+                );
+            }
+
+            return Output is null ? null : JsonValue.Create(Output);
+        }
+        set
+        {
+            if (value is JsonArray)
+            {
+                OutputContentParts = value.Deserialize<List<ResponseContentPart>>(
+                    JsonOptions
+                );
+                Output = null;
+            }
+            else if (value is null)
+            {
+                Output = null;
+                OutputContentParts = null;
+            }
+            else
+            {
+                Output = value.GetValue<string>();
+                OutputContentParts = null;
+            }
+        }
+    }
 
     public static ResponseInputItem NewMessage(string role, string content)
     {
@@ -197,11 +248,42 @@ public class ResponseInputItem
         };
     }
 
+    public static ResponseInputItem NewMessage(
+        string role,
+        IEnumerable<ResponseContentPart> contentParts
+    )
+    {
+        ArgumentNullException.ThrowIfNull(contentParts);
+        return new ResponseInputItem
+        {
+            Type = ResponseInputItemTypes.Message,
+            Role = role,
+            Content = JsonSerializer.SerializeToNode(
+                contentParts.ToList(),
+                JsonOptions
+            ),
+        };
+    }
+
     public static ResponseInputItem NewUserMessage(string content) => NewMessage("user", content);
+
+    public static ResponseInputItem NewUserMessage(
+        IEnumerable<ResponseContentPart> contentParts
+    ) => NewMessage("user", contentParts);
 
     public static ResponseInputItem NewSystemMessage(string content) => NewMessage("system", content);
 
+    public static ResponseInputItem NewDeveloperMessage(string content) => NewMessage("developer", content);
+
+    public static ResponseInputItem NewDeveloperMessage(
+        IEnumerable<ResponseContentPart> contentParts
+    ) => NewMessage("developer", contentParts);
+
     public static ResponseInputItem NewAssistantMessage(string content) => NewMessage("assistant", content);
+
+    public static ResponseInputItem NewAssistantMessage(
+        IEnumerable<ResponseContentPart> contentParts
+    ) => NewMessage("assistant", contentParts);
 
     public static ResponseInputItem NewFunctionCall(string callId, string name, string arguments)
     {
@@ -224,14 +306,52 @@ public class ResponseInputItem
         };
     }
 
+    public static ResponseInputItem NewFunctionCallOutput(
+        string callId,
+        IEnumerable<ResponseContentPart> outputContentParts
+    )
+    {
+        ArgumentNullException.ThrowIfNull(outputContentParts);
+        return new ResponseInputItem
+        {
+            Type = ResponseInputItemTypes.FunctionCallOutput,
+            CallId = callId,
+            OutputContentParts = outputContentParts.ToList(),
+        };
+    }
+
+    public static ResponseInputItem NewCustomToolCallOutput(string callId, string output)
+    {
+        return new ResponseInputItem
+        {
+            Type = ResponseInputItemTypes.CustomToolCallOutput,
+            CallId = callId,
+            Output = output,
+        };
+    }
+
+    public static ResponseInputItem NewCustomToolCallOutput(
+        string callId,
+        IEnumerable<ResponseContentPart> outputContentParts
+    )
+    {
+        ArgumentNullException.ThrowIfNull(outputContentParts);
+        return new ResponseInputItem
+        {
+            Type = ResponseInputItemTypes.CustomToolCallOutput,
+            CallId = callId,
+            OutputContentParts = outputContentParts.ToList(),
+        };
+    }
+
     public static ResponseInputItem NewReasoning(IEnumerable<ResponseContentPart> content)
     {
         return new ResponseInputItem
         {
             Type = ResponseInputItemTypes.Reasoning,
             Content = System.Text.Json.JsonSerializer.SerializeToNode(
-                content,
-                new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)
+                content.ToList(),
+                JsonOptions
             ),
         };
     }
@@ -249,6 +369,67 @@ public class ResponseContentPart
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public JsonNode? Annotations { get; set; }
+
+    /// <summary>
+    /// URL or data URL for an <c>input_image</c> content part.
+    /// </summary>
+    [JsonPropertyName("image_url")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ImageUrl { get; set; }
+
+    /// <summary>
+    /// Files API identifier for an <c>input_image</c> content part.
+    /// </summary>
+    [JsonPropertyName("file_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FileId { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Detail { get; set; }
+
+    public static ResponseContentPart CreateInputTextPart(string text)
+    {
+        return new ResponseContentPart
+        {
+            Type = ResponseContentPartTypes.InputText,
+            Text = text,
+        };
+    }
+
+    public static ResponseContentPart CreateInputImagePart(
+        string imageUrl,
+        string? detail = null
+    )
+    {
+        return new ResponseContentPart
+        {
+            Type = ResponseContentPartTypes.InputImage,
+            ImageUrl = imageUrl,
+            Detail = detail,
+        };
+    }
+
+    public static ResponseContentPart CreateInputImageDataPart(
+        ReadOnlyMemory<byte> data,
+        string mediaType,
+        string? detail = null
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(mediaType);
+        return CreateInputImagePart(
+            $"data:{mediaType};base64,{Convert.ToBase64String(data.Span)}",
+            detail
+        );
+    }
+
+    public static ResponseContentPart CreateInputFilePart(string fileId)
+    {
+        return new ResponseContentPart
+        {
+            Type = ResponseContentPartTypes.InputImage,
+            FileId = fileId,
+        };
+    }
 }
 
 /// <summary>

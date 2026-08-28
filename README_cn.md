@@ -17,6 +17,8 @@
 - [x] 函数调用
 - [x] 兼容OpenAI格式的 Responses API（包含语义化 SSE 流式返回）
 - [x] 支持Microsoft.Extensions.AI IChatClient
+- [x] 多模态视觉模型 `deepseek-v4-flash-vision-exp`
+- [x] Files API（上传、列出、查询、删除图片）
 
 ## 使用
 
@@ -52,9 +54,9 @@ public DeepSeekClient(HttpClient http, string apiKey);
 > 如果你想调用本地模型，可尝试自定义`HttpClient`，并设置`BaseAddress`为本地地址。
 
 > [!IMPORTANT]
-> DeepSeek 现已支持 `deepseek-v4-pro` 与 `deepseek-v4-flash`，访问新模型时 `base_url` 不变。
-> 旧模型 ID `deepseek-chat` 与 `deepseek-reasoner` 将在 2026-07-24 停止使用。
-> 过渡期内，这两个旧 ID 分别指向 `deepseek-v4-flash` 的非思考模式与思考模式。
+> DeepSeek 现已在相同的 `base_url` 上支持 `deepseek-v4-pro`、`deepseek-v4-flash`
+> 以及多模态模型 `deepseek-v4-flash-vision-exp`。
+> 新请求请使用 V4 模型 ID；旧的 `deepseek-chat` 与 `deepseek-reasoner` ID 已退出使用。
 
 ### 调用方法
 
@@ -75,8 +77,82 @@ Task<ResponseResult?> ResponseAsync(ResponseRequest request, CancellationToken c
 
 IAsyncEnumerable<ResponseStreamEvent> ResponseStreamAsync(ResponseRequest request, CancellationToken cancellationToken);
 
+Task<FileObject?> CreateFileAsync(Stream file, string fileName, FileUploadOptions? options = null, CancellationToken cancellationToken = default);
+
+Task<FileListResponse?> ListFilesAsync(FileListOptions? options = null, CancellationToken cancellationToken = default);
+
+Task<FileObject?> RetrieveFileAsync(string fileId, CancellationToken cancellationToken = default);
+
+Task<FileDeleteResponse?> DeleteFileAsync(string fileId, CancellationToken cancellationToken = default);
+
 Task<UserResponse?> GetUserBalanceAsync(CancellationToken cancellationToken);
 ```
+
+### 多模态视觉与 Files API
+
+`deepseek-v4-flash-vision-exp` 使用原有的 `POST /chat/completions` 地址，但用户消息的
+`content` 可以是内容块数组。支持内联 Base64 data URL、公开图片 URL，以及通过 Files API
+上传后引用的 `file_id`：
+
+```csharp
+var response = await client.ChatAsync(new ChatRequest
+{
+    Model = DeepSeekModels.Vision,
+    Messages =
+    [
+        Message.NewUserMessage(
+        [
+            ChatMessageContentPart.CreateTextPart("描述这张图片。"),
+            ChatMessageContentPart.CreateImageUrlPart(
+                "data:image/jpeg;base64,<BASE64_DATA>",
+                ImageDetailTypes.High),
+        ]),
+    ],
+}, cancellationToken);
+
+Console.WriteLine(response?.Choices[0].Message?.GetTextContent());
+```
+
+大图片或需要复用时，可先上传到 Files API。文件上传用途必须是 `user_data`，文件格式支持
+JPEG、PNG、GIF、WebP：
+
+```csharp
+await using var image = File.OpenRead("image.jpg");
+var file = await client.CreateFileAsync(
+    image,
+    "image.jpg",
+    new FileUploadOptions { ContentType = "image/jpeg" },
+    cancellationToken);
+if (file is null)
+{
+    throw new InvalidOperationException(client.ErrorMsg ?? "文件上传失败。");
+}
+
+var response = await client.ChatAsync(new ChatRequest
+{
+    Model = DeepSeekModels.Vision,
+    Messages =
+    [
+        Message.NewUserMessage(
+        [
+            ChatMessageContentPart.CreateTextPart("识别这张图片中的文字。"),
+            ChatMessageContentPart.CreateFilePart(file.Id),
+        ]),
+    ],
+}, cancellationToken);
+
+var files = await client.ListFilesAsync(
+    new FileListOptions { Purpose = FilePurposes.UserData },
+    cancellationToken);
+var metadata = await client.RetrieveFileAsync(file.Id, cancellationToken);
+await client.DeleteFileAsync(file.Id, cancellationToken);
+```
+
+`Message.Content` 保持原有的字符串 API；当消息使用内容块数组时可通过 `ContentParts`
+访问各个文本、图片或文件部件。Responses API 使用不同的图片内容块结构：
+`ResponseContentPart.CreateInputImagePart(...)` 会生成 `input_image`，文件引用使用
+`ResponseContentPart.CreateInputFilePart(...)`。详细限制和字段请参考[图像理解指南](https://api-docs.deepseek.com/zh-cn/guides/vision)、
+[Files API 指南](https://api-docs.deepseek.com/zh-cn/guides/files_api)及[上传文件 API](https://api-docs.deepseek.com/zh-cn/api/create-file)。
 
 ### Responses API
 

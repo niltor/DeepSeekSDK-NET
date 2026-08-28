@@ -87,6 +87,137 @@ public class DeepSeekLiveApiTests : IClassFixture<DeepSeekIntegrationFixture>
     }
 
     [Fact]
+    public async Task VisionChatAsync_WithInlineImage_ReturnsContent()
+    {
+        var request = new ChatRequest
+        {
+            Model = DeepSeekModels.Vision,
+            MaxTokens = 32,
+            Temperature = 0,
+            Thinking = new Thinking { Type = ThinkingTypes.Disabled },
+            ReasoningEffort = ReasoningEffortTypes.None,
+            Messages =
+            [
+                Message.NewUserMessage(
+                [
+                    ChatMessageContentPart.CreateTextPart(
+                        "Inspect the image and reply with exactly: vision-ok"
+                    ),
+                    ChatMessageContentPart.CreateImageUrlPart(
+                        "data:image/png;base64," + Convert.ToBase64String(TestImage),
+                        ImageDetailTypes.Low
+                    ),
+                ]),
+            ],
+        };
+
+        var response = await _client.ChatAsync(request, _fixture.CreateToken());
+
+        Assert.NotNull(response);
+        Assert.Equal(DeepSeekModels.Vision, response!.Model);
+        Assert.False(string.IsNullOrWhiteSpace(response.Choices[0].Message?.Content));
+    }
+
+    [Fact]
+    public async Task VisionResponseAsync_WithInputImage_ReturnsContent()
+    {
+        var input = new[]
+        {
+            ResponseInputItem.NewUserMessage(
+            [
+                ResponseContentPart.CreateInputTextPart(
+                    "Inspect the image and reply with exactly: response-vision-ok"
+                ),
+                ResponseContentPart.CreateInputImagePart(
+                    "data:image/png;base64," + Convert.ToBase64String(TestImage),
+                    ImageDetailTypes.Low
+                ),
+            ]),
+        };
+
+        var response = await _client.ResponseAsync(
+            new ResponseRequest
+            {
+                Model = DeepSeekModels.Vision,
+                Input = JsonSerializer.SerializeToNode(input, _client.JsonSerializerOptions),
+                Reasoning = new ResponseReasoningOptions { Effort = ReasoningEffortTypes.None },
+                MaxOutputTokens = 32,
+                Temperature = 0,
+            },
+            _fixture.CreateToken()
+        );
+
+        Assert.NotNull(response);
+        Assert.Equal("completed", response!.Status);
+        Assert.False(string.IsNullOrWhiteSpace(response.OutputText));
+    }
+
+    [Fact]
+    public async Task FilesApi_CanUploadListRetrieveUseAndDeleteImage()
+    {
+        FileObject? uploaded = null;
+        try
+        {
+            uploaded = await _client.CreateFileAsync(
+                new MemoryStream(TestImage),
+                "vision-test.png",
+                new FileUploadOptions { ContentType = "image/png" },
+                _fixture.CreateToken()
+            );
+
+            Assert.NotNull(uploaded);
+            Assert.StartsWith("file-api-", uploaded!.Id);
+            Assert.Equal("vision-test.png", uploaded.Filename);
+
+            var listed = await _client.ListFilesAsync(
+                new FileListOptions { Purpose = FilePurposes.UserData },
+                _fixture.CreateToken()
+            );
+            Assert.NotNull(listed);
+            Assert.Contains(listed!.Data, file => file.Id == uploaded.Id);
+
+            var retrieved = await _client.RetrieveFileAsync(
+                uploaded.Id,
+                _fixture.CreateToken()
+            );
+            Assert.NotNull(retrieved);
+            Assert.Equal(uploaded.Id, retrieved!.Id);
+
+            var response = await _client.ChatAsync(
+                new ChatRequest
+                {
+                    Model = DeepSeekModels.Vision,
+                    MaxTokens = 32,
+                    Temperature = 0,
+                    Thinking = new Thinking { Type = ThinkingTypes.Disabled },
+                    ReasoningEffort = ReasoningEffortTypes.None,
+                    Messages =
+                    [
+                        Message.NewUserMessage(
+                        [
+                            ChatMessageContentPart.CreateTextPart(
+                                "Inspect this image and reply with exactly: file-vision-ok"
+                            ),
+                            ChatMessageContentPart.CreateFilePart(uploaded.Id),
+                        ]),
+                    ],
+                },
+                _fixture.CreateToken()
+            );
+
+            Assert.NotNull(response);
+            Assert.False(string.IsNullOrWhiteSpace(response!.Choices[0].Message?.Content));
+        }
+        finally
+        {
+            if (uploaded is not null)
+            {
+                await _client.DeleteFileAsync(uploaded.Id, _fixture.CreateToken());
+            }
+        }
+    }
+
+    [Fact]
     public async Task ChatStreamAsync_ReturnsStreamChunks()
     {
         var request = new ChatRequest
@@ -306,4 +437,8 @@ public class DeepSeekLiveApiTests : IClassFixture<DeepSeekIntegrationFixture>
         [Description("The date, default is today's date")]
         public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
     }
+
+    private static readonly byte[] TestImage = Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    );
 }

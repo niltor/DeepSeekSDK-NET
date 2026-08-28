@@ -106,7 +106,7 @@ internal class Examples
                 var weatherDto = JsonSerializer.Deserialize<WeatherDto>(
                     tool.Function.Arguments.ToString(),
                     options
-                );
+                ) ?? throw new JsonException("The GetWeather tool arguments are invalid.");
 
                 var toolResult = Functions.GetWeather(weatherDto);
 

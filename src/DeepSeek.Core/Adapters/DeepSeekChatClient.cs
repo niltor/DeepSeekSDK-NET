@@ -8,19 +8,40 @@ namespace DeepSeek.Core.Adapters;
 /// <summary>
 /// DeepSeekClient for Microsoft.Extensions.AI IChatClient
 /// </summary>
-public sealed class DeepSeekChatClient(string apiKey) : IChatClient
+public sealed class DeepSeekChatClient : IChatClient
 {
-    private readonly DeepSeekClient _client = new(apiKey);
+    private readonly DeepSeekClient _client;
+    private readonly bool _ownsClient;
+
+    public DeepSeekChatClient(string apiKey)
+        : this(new DeepSeekClient(apiKey), ownsClient: true) { }
+
+    public DeepSeekChatClient(HttpClient httpClient)
+        : this(new DeepSeekClient(httpClient), ownsClient: false) { }
+
+    public DeepSeekChatClient(HttpClient httpClient, string apiKey)
+        : this(new DeepSeekClient(httpClient, apiKey), ownsClient: false) { }
+
+    public DeepSeekChatClient(DeepSeekClient client)
+        : this(client, ownsClient: false) { }
+
+    private DeepSeekChatClient(DeepSeekClient client, bool ownsClient)
+    {
+        _client = client ?? throw new ArgumentNullException(nameof(client));
+        _ownsClient = ownsClient;
+    }
 
     public void Dispose()
     {
-        // underlying HttpClient lifetime is managed by DeepSeekClient owner
+        if (_ownsClient)
+        {
+            _client.Dispose();
+        }
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null)
     {
-        // No additional services exposed for now
-        return null;
+        return serviceType == typeof(DeepSeekClient) ? _client : null;
     }
 
     public async Task<Microsoft.Extensions.AI.ChatResponse> GetResponseAsync(
@@ -60,16 +81,30 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
         }
         await foreach (Choice choice in stream.WithCancellation(cancellationToken))
         {
-            if (!string.IsNullOrWhiteSpace(choice.Delta?.ReasoningContent))
+            if (choice.Delta?.ContentParts is { Count: > 0 } contentParts)
+            {
+                foreach (var part in contentParts)
+                {
+                    var content = MapContentPart(part);
+                    if (content is not null)
+                    {
+                        yield return new ChatResponseUpdate(ChatRole.Assistant, [content]);
+                    }
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(choice.Delta?.ReasoningContent))
             {
                 yield return new ChatResponseUpdate(
                     ChatRole.Assistant,
-                    choice.Delta.ReasoningContent
+                    [new TextReasoningContent(choice.Delta.ReasoningContent)]
                 );
             }
-            if (!string.IsNullOrWhiteSpace(choice.Delta?.Content))
+            else if (!string.IsNullOrWhiteSpace(choice.Delta?.Content))
             {
-                yield return new ChatResponseUpdate(ChatRole.Assistant, choice.Delta.Content);
+                yield return new ChatResponseUpdate(
+                    ChatRole.Assistant,
+                    [new TextContent(choice.Delta.Content)]
+                );
             }
         }
     }
@@ -97,28 +132,7 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
 
         foreach (var m in messages)
         {
-            var role = m.Role;
-            if (role == ChatRole.System)
-            {
-                req.Messages.Add(Message.NewSystemMessage(m.Text));
-            }
-            else if (role == ChatRole.User)
-            {
-                req.Messages.Add(Message.NewUserMessage(m.Text));
-            }
-            else if (role == ChatRole.Assistant)
-            {
-                req.Messages.Add(Message.NewAssistantMessage(m.Text));
-            }
-            else if (role == ChatRole.Tool)
-            {
-                // Tool messages need a tool_call_id; not available in abstractions without tool flow
-                req.Messages.Add(new Message { Role = "tool", Content = m.Text });
-            }
-            else
-            {
-                req.Messages.Add(Message.NewUserMessage(m.Text));
-            }
+            req.Messages.Add(MapMessage(m));
         }
 
         if (options?.Tools is { Count: > 0 })
@@ -230,10 +244,166 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
         return req;
     }
 
+    private static Message MapMessage(ChatMessage message)
+    {
+        var role = message.Role switch
+        {
+            var value when value == ChatRole.System => "system",
+            var value when value == ChatRole.User => "user",
+            var value when value == ChatRole.Assistant => "assistant",
+            var value when value == ChatRole.Tool => "tool",
+            _ => "user",
+        };
+        var parts = new List<ChatMessageContentPart>();
+
+        foreach (var content in message.Contents)
+        {
+            switch (content)
+            {
+                case TextContent text when !string.IsNullOrEmpty(text.Text):
+                    parts.Add(ChatMessageContentPart.CreateTextPart(text.Text));
+                    break;
+                case UriContent uri when IsImageMediaType(uri.MediaType):
+                    parts.Add(
+                        ChatMessageContentPart.CreateImageUrlPart(GetUriString(uri.Uri))
+                    );
+                    break;
+                case DataContent data when IsImageMediaType(data.MediaType):
+                    parts.Add(ChatMessageContentPart.CreateImageUrlPart(data.Uri));
+                    break;
+                case HostedFileContent file:
+                    parts.Add(ChatMessageContentPart.CreateFilePart(file.FileId));
+                    break;
+            }
+        }
+
+        if (parts.Count == 0)
+        {
+            return new Message
+            {
+                Role = role,
+                Content = message.Text,
+            };
+        }
+
+        if (parts.All(part => part.Type == ChatMessageContentPartTypes.Text))
+        {
+            return new Message
+            {
+                Role = role,
+                Content = string.Concat(parts.Select(part => part.Text)),
+            };
+        }
+
+        return new Message
+        {
+            Role = role,
+            ContentParts = parts,
+        };
+    }
+
+    private static bool IsImageMediaType(string? mediaType)
+    {
+        return mediaType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string GetUriString(Uri uri)
+    {
+        return uri.IsAbsoluteUri ? uri.AbsoluteUri : uri.ToString();
+    }
+
+    private static AIContent? MapContentPart(ChatMessageContentPart part)
+    {
+        if (part.Type == ChatMessageContentPartTypes.Text && !string.IsNullOrEmpty(part.Text))
+        {
+            return new TextContent(part.Text);
+        }
+
+        if (
+            part.Type == ChatMessageContentPartTypes.ImageUrl
+            && !string.IsNullOrWhiteSpace(part.ImageUrl?.Url)
+        )
+        {
+            return MapImageContent(part.ImageUrl.Url);
+        }
+
+        if (
+            part.Type == ChatMessageContentPartTypes.File
+            && !string.IsNullOrWhiteSpace(part.FileId)
+        )
+        {
+            return new HostedFileContent(part.FileId)
+            {
+                Name = part.Filename,
+                MediaType = "image/*",
+            };
+        }
+
+        if (
+            part.Type == ChatMessageContentPartTypes.File
+            && !string.IsNullOrWhiteSpace(part.FileData)
+        )
+        {
+            return MapDataContent(part.FileData, part.Filename);
+        }
+
+        return null;
+    }
+
+    private static AIContent? MapImageContent(string imageUrl)
+    {
+        return imageUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+            ? MapDataContent(imageUrl, null)
+            : new UriContent(imageUrl, "image/*");
+    }
+
+    private static DataContent? MapDataContent(string dataUri, string? name)
+    {
+        var commaIndex = dataUri.IndexOf(',');
+        if (
+            !dataUri.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+            || commaIndex <= "data:".Length
+        )
+        {
+            return null;
+        }
+
+        var metadata = dataUri["data:".Length..commaIndex];
+        var mediaType = metadata.Split(';', 2)[0];
+        if (string.IsNullOrWhiteSpace(mediaType))
+        {
+            mediaType = "application/octet-stream";
+        }
+
+        try
+        {
+            return new DataContent(dataUri, mediaType) { Name = name };
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
     private static Microsoft.Extensions.AI.ChatResponse MapToChatResponse(Models.ChatResponse res)
     {
-        var content = res.Choices.FirstOrDefault()?.Message?.Content ?? string.Empty;
-        var message = new ChatMessage(ChatRole.Assistant, content);
+        var sourceMessage = res.Choices.FirstOrDefault()?.Message;
+        var message = new ChatMessage(ChatRole.Assistant, (string?)null);
+        if (sourceMessage?.ContentParts is { Count: > 0 } contentParts)
+        {
+            foreach (var part in contentParts)
+            {
+                var content = MapContentPart(part);
+                if (content is not null)
+                {
+                    message.Contents.Add(content);
+                }
+            }
+        }
+        else if (!string.IsNullOrEmpty(sourceMessage?.Content))
+        {
+            message.Contents.Add(new TextContent(sourceMessage.Content));
+        }
 
         // Handle tool calls if present in the first choice
         var firstChoice = res.Choices.FirstOrDefault();
@@ -272,8 +442,14 @@ public sealed class DeepSeekChatClient(string apiKey) : IChatClient
         var chatResponse = new Microsoft.Extensions.AI.ChatResponse([message])
         {
             ModelId = res.Model,
+            RawRepresentation = res,
             AdditionalProperties = [],
         };
+
+        if (sourceMessage?.ContentParts is { Count: > 0 })
+        {
+            chatResponse.AdditionalProperties["content_parts"] = sourceMessage.ContentParts;
+        }
 
         // Add comprehensive metadata
         chatResponse.AdditionalProperties["id"] = res.Id;
