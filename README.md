@@ -56,10 +56,9 @@ The default timeout for internal HttpClient is 120 seconds, which can be set bef
 > If you want to call a local model, try customizing `HttpClient` and setting `BaseAddress` to the local address.
 
 > [!IMPORTANT]
-> DeepSeek supports `deepseek-v4-pro`, `deepseek-v4-flash`, and the multimodal
-> `deepseek-v4-flash-vision-exp` model on the same `base_url`.
-> Use the V4 model IDs for new requests; the legacy `deepseek-chat` and
-> `deepseek-reasoner` IDs are retired.
+> DeepSeek supports `deepseek-flash` and `deepseek-v4-pro` on the same
+> `base_url`. The retired `deepseek-v4-flash` and
+> `deepseek-v4-flash-vision-exp` IDs are temporarily routed to V4.1-Flash.
 
 ### Calling method
 
@@ -101,7 +100,7 @@ and Files API `file_id` references are supported:
 ```csharp
 var response = await client.ChatAsync(new ChatRequest
 {
-    Model = DeepSeekModels.Vision,
+    Model = DeepSeekModels.FlashVisionExperimental,
     Messages =
     [
         Message.NewUserMessage(
@@ -133,7 +132,7 @@ if (file is null)
 
 var response = await client.ChatAsync(new ChatRequest
 {
-    Model = DeepSeekModels.Vision,
+    Model = DeepSeekModels.FlashVisionExperimental,
     Messages =
     [
         Message.NewUserMessage(

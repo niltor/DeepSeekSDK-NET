@@ -8,7 +8,7 @@ public class CompletionRequest
     /// </summary>
     public required string Prompt { get; set; }
     /// <summary>
-    /// 使用的模型的 ID。您可以使用 deepseek-v4-pro 或者 deepseek-v4-flash。
+    /// 使用的模型的 ID。默认使用 deepseek-flash。
     /// </summary>
     public string Model { get; set; } = DeepSeekModels.Flash;
 

@@ -91,7 +91,7 @@ public class DeepSeekLiveApiTests : IClassFixture<DeepSeekIntegrationFixture>
     {
         var request = new ChatRequest
         {
-            Model = DeepSeekModels.Vision,
+            Model = DeepSeekModels.FlashVisionExperimental,
             MaxTokens = 32,
             Temperature = 0,
             Thinking = new Thinking { Type = ThinkingTypes.Disabled },
@@ -114,7 +114,7 @@ public class DeepSeekLiveApiTests : IClassFixture<DeepSeekIntegrationFixture>
         var response = await _client.ChatAsync(request, _fixture.CreateToken());
 
         Assert.NotNull(response);
-        Assert.Equal(DeepSeekModels.Vision, response!.Model);
+            Assert.Equal(DeepSeekModels.FlashVisionExperimental, response!.Model);
         Assert.False(string.IsNullOrWhiteSpace(response.Choices[0].Message?.Content));
     }
 
@@ -138,7 +138,7 @@ public class DeepSeekLiveApiTests : IClassFixture<DeepSeekIntegrationFixture>
         var response = await _client.ResponseAsync(
             new ResponseRequest
             {
-                Model = DeepSeekModels.Vision,
+                Model = DeepSeekModels.FlashVisionExperimental,
                 Input = JsonSerializer.SerializeToNode(input, _client.JsonSerializerOptions),
                 Reasoning = new ResponseReasoningOptions { Effort = ReasoningEffortTypes.None },
                 MaxOutputTokens = 32,
@@ -186,7 +186,7 @@ public class DeepSeekLiveApiTests : IClassFixture<DeepSeekIntegrationFixture>
             var response = await _client.ChatAsync(
                 new ChatRequest
                 {
-                    Model = DeepSeekModels.Vision,
+                Model = DeepSeekModels.FlashVisionExperimental,
                     MaxTokens = 32,
                     Temperature = 0,
                     Thinking = new Thinking { Type = ThinkingTypes.Disabled },
