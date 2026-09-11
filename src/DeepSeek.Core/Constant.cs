@@ -3,11 +3,8 @@ namespace DeepSeek.Core;
 public class DeepSeekModels
 {
     public const string Pro = "deepseek-v4-pro";
-    public const string Flash = "deepseek-v4-flash";
+    public const string Flash = "deepseek-flash";
     public const string FlashVisionExperimental = "deepseek-v4-flash-vision-exp";
-    public const string FlashVision = FlashVisionExperimental;
-    public const string VisionExperimental = FlashVisionExperimental;
-    public const string Vision = FlashVisionExperimental;
 }
 
 public class ResponseFormatTypes

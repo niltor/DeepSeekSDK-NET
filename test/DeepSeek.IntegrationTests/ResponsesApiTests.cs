@@ -49,7 +49,7 @@ public sealed class ResponsesApiTests
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(request, JsonOptions));
         var root = document.RootElement;
 
-        Assert.Equal("deepseek-v4-flash", root.GetProperty("model").GetString());
+        Assert.Equal("deepseek-flash", root.GetProperty("model").GetString());
         Assert.Equal("Hello", root.GetProperty("input").GetString());
         Assert.Equal("Be concise.", root.GetProperty("instructions").GetString());
         Assert.Equal("high", root.GetProperty("reasoning").GetProperty("effort").GetString());
@@ -71,7 +71,7 @@ public sealed class ResponsesApiTests
               "object": "response",
               "created_at": 1753000000,
               "status": "completed",
-              "model": "deepseek-v4-flash",
+              "model": "deepseek-flash",
               "output": [
                 {
                   "type": "reasoning",
@@ -137,7 +137,7 @@ public sealed class ResponsesApiTests
         const string stream =
             """
             event: response.created
-            data: {"type":"response.created","sequence_number":0,"response":{"id":"resp_1","object":"response","status":"in_progress","model":"deepseek-v4-flash","output":[]}}
+            data: {"type":"response.created","sequence_number":0,"response":{"id":"resp_1","object":"response","status":"in_progress","model":"deepseek-flash","output":[]}}
 
             event: response.reasoning_text.delta
             data: {"type":"response.reasoning_text.delta","sequence_number":1,"item_id":"rs_1","delta":"Think"}
@@ -146,7 +146,7 @@ public sealed class ResponsesApiTests
             data: {"type":"response.output_text.delta","sequence_number":2,"item_id":"msg_1","delta":"Hello"}
 
             event: response.completed
-            data: {"type":"response.completed","sequence_number":3,"response":{"id":"resp_1","object":"response","status":"completed","model":"deepseek-v4-flash","output":[],"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}}
+            data: {"type":"response.completed","sequence_number":3,"response":{"id":"resp_1","object":"response","status":"completed","model":"deepseek-flash","output":[],"usage":{"input_tokens":1,"output_tokens":2,"total_tokens":3}}}
 
             """;
         var handler = new TestHttpMessageHandler(
@@ -191,7 +191,7 @@ public sealed class ResponsesApiTests
               "object": "response",
               "created_at": 1753000000,
               "status": "completed",
-              "model": "deepseek-v4-flash",
+              "model": "deepseek-flash",
               "output": [
                 { "type": "reasoning", "content": [{ "type": "reasoning_text", "text": "Reason" }] },
                 { "type": "message", "content": [{ "type": "output_text", "text": "Answer" }] },
@@ -229,7 +229,7 @@ public sealed class ResponsesApiTests
         const string stream =
             """
             event: response.created
-            data: {"type":"response.created","sequence_number":0,"response":{"id":"resp_1","object":"response","status":"in_progress","model":"deepseek-v4-flash","output":[]}}
+            data: {"type":"response.created","sequence_number":0,"response":{"id":"resp_1","object":"response","status":"in_progress","model":"deepseek-flash","output":[]}}
 
             event: response.reasoning_text.delta
             data: {"type":"response.reasoning_text.delta","sequence_number":1,"item_id":"rs_1","delta":"Reason"}
@@ -238,7 +238,7 @@ public sealed class ResponsesApiTests
             data: {"type":"response.output_text.delta","sequence_number":2,"item_id":"msg_1","delta":"Answer"}
 
             event: response.completed
-            data: {"type":"response.completed","sequence_number":3,"response":{"id":"resp_1","object":"response","status":"completed","model":"deepseek-v4-flash","output":[]}}
+            data: {"type":"response.completed","sequence_number":3,"response":{"id":"resp_1","object":"response","status":"completed","model":"deepseek-flash","output":[]}}
 
             """;
         var handler = new TestHttpMessageHandler(
@@ -289,7 +289,7 @@ public sealed class ResponsesApiTests
             data: {"type":"response.output_item.done","sequence_number":3,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"get_weather","arguments":"{\"city\":\"Shanghai\"}"}}
 
             event: response.completed
-            data: {"type":"response.completed","sequence_number":4,"response":{"id":"resp_1","object":"response","status":"completed","model":"deepseek-v4-flash","output":[]}}
+            data: {"type":"response.completed","sequence_number":4,"response":{"id":"resp_1","object":"response","status":"completed","model":"deepseek-flash","output":[]}}
 
             """;
         var handler = new TestHttpMessageHandler(

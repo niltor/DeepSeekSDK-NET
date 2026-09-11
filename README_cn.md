@@ -54,8 +54,9 @@ public DeepSeekClient(HttpClient http, string apiKey);
 > 如果你想调用本地模型，可尝试自定义`HttpClient`，并设置`BaseAddress`为本地地址。
 
 > [!IMPORTANT]
-> DeepSeek 现已在相同的 `base_url` 上支持 `deepseek-v4-pro`、`deepseek-v4-flash`
-> 以及多模态模型 `deepseek-v4-flash-vision-exp`。
+> DeepSeek 现已在相同的 `base_url` 上支持 `deepseek-flash` 和
+> `deepseek-v4-pro`。已退役的 `deepseek-v4-flash` 和
+> `deepseek-v4-flash-vision-exp` 会暂时兼容路由到 V4.1-Flash。
 > 新请求请使用 V4 模型 ID；旧的 `deepseek-chat` 与 `deepseek-reasoner` ID 已退出使用。
 
 ### 调用方法
@@ -97,7 +98,7 @@ Task<UserResponse?> GetUserBalanceAsync(CancellationToken cancellationToken);
 ```csharp
 var response = await client.ChatAsync(new ChatRequest
 {
-    Model = DeepSeekModels.Vision,
+    Model = DeepSeekModels.FlashVisionExperimental,
     Messages =
     [
         Message.NewUserMessage(
@@ -130,7 +131,7 @@ if (file is null)
 
 var response = await client.ChatAsync(new ChatRequest
 {
-    Model = DeepSeekModels.Vision,
+    Model = DeepSeekModels.FlashVisionExperimental,
     Messages =
     [
         Message.NewUserMessage(

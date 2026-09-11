@@ -19,7 +19,7 @@ public sealed class VisionAndFilesApiTests
     {
         var request = new ChatRequest
         {
-            Model = DeepSeekModels.Vision,
+            Model = DeepSeekModels.FlashVisionExperimental,
             Messages =
             [
                 Message.NewUserMessage(
@@ -227,7 +227,7 @@ public sealed class VisionAndFilesApiTests
                     ]
                 ),
             ],
-            new ChatOptions { ModelId = DeepSeekModels.Vision }
+            new ChatOptions { ModelId = DeepSeekModels.FlashVisionExperimental }
         );
 
         using var document = JsonDocument.Parse(handler.Requests[0].Body);
@@ -268,7 +268,7 @@ public sealed class VisionAndFilesApiTests
                     ]
                 ),
             ],
-            new ChatOptions { ModelId = DeepSeekModels.Vision }
+            new ChatOptions { ModelId = DeepSeekModels.FlashVisionExperimental }
         );
 
         using var document = JsonDocument.Parse(handler.Requests[0].Body);
@@ -292,7 +292,7 @@ public sealed class VisionAndFilesApiTests
     {
         var request = new ResponseRequest
         {
-            Model = DeepSeekModels.Vision,
+            Model = DeepSeekModels.FlashVisionExperimental,
             Input = JsonSerializer.SerializeToNode(
                 new[]
                 {
