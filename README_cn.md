@@ -19,6 +19,7 @@
 - [x] 支持Microsoft.Extensions.AI IChatClient
 - [x] 多模态视觉模型 `deepseek-v4-flash-vision-exp`
 - [x] Files API（上传、列出、查询、删除图片）
+- [x] 独立的 Search 与 Fetch API（网页搜索与 Markdown 页面抓取）
 
 ## 使用
 
@@ -87,6 +88,10 @@ Task<FileObject?> RetrieveFileAsync(string fileId, CancellationToken cancellatio
 Task<FileDeleteResponse?> DeleteFileAsync(string fileId, CancellationToken cancellationToken = default);
 
 Task<UserResponse?> GetUserBalanceAsync(CancellationToken cancellationToken);
+
+Task<SearchResponse?> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default);
+
+Task<FetchResponse?> FetchAsync(FetchRequest request, CancellationToken cancellationToken = default);
 ```
 
 ### 多模态视觉与 Files API
@@ -199,6 +204,54 @@ await foreach (var responseEvent in client.ResponseStreamAsync(
 DeepSeek Responses API 是无状态的，每次请求都需要在 `input` 中传回完整历史；不支持服务端的
 `previous_response_id`、`conversation` 和响应存储。详见[官方 Responses API 指南](https://api-docs.deepseek.com/zh-cn/guides/responses_api)
 和[创建 Response API 文档](https://api-docs.deepseek.com/zh-cn/api/create-response)。
+
+### Search 与 Fetch API
+
+DeepSeek 还提供了独立的原始 JSON 接口，用于网页搜索和网页内容抓取。这两个接口与
+OpenAI 兼容的 Responses API 以及 `Microsoft.Extensions.AI` 工具适配层彼此独立。Search
+返回带排序信息的结构化结果，Fetch 返回网页标题和 Markdown 内容：
+
+```csharp
+var search = await client.SearchAsync(new SearchRequest
+{
+    Query = "DeepSeek API site:api-docs.deepseek.com",
+    Count = 5,
+    OriginalQuestion = "当前的 DeepSeek API 文档在哪里？",
+    NeedContent = true,
+}, cancellationToken);
+
+var firstResult = search?.Results.FirstOrDefault();
+if (firstResult is not null)
+{
+    var page = await client.FetchAsync(
+        new FetchRequest { Url = firstResult.Url },
+        cancellationToken);
+    Console.WriteLine(page?.Content);
+}
+```
+
+Search 的 `Query` 与非 null 的 `OriginalQuestion` 均支持 1 到 128 个 Unicode 字符；`count` 支持
+1 到 50，设置 `NeedContent` 可以让结果包含网页内容；Fetch 接受长度不超过
+8192 个字符且不含用户信息的 HTTP/HTTPS URL。两个接口都使用相同的 Bearer API Key；服务器返回错误
+时，方法返回 `null`，响应正文保存在 `ErrorMsg` 中。DeepSeek 按成功请求计费。详细契约请参考官方的
+[Search 与 Fetch 指南](https://api-docs.deepseek.com/zh-cn/guides/search/)、
+[Search 接口文档](https://api-docs.deepseek.com/api/search/)和
+[Fetch 接口文档](https://api-docs.deepseek.com/api/fetch/)。
+
+每次 Search/Fetch 请求通过参数校验后会清除之前的 `ErrorMsg`。响应 JSON 损坏、缺少必填字段或
+必填数据为 null 时，也会返回 `null`，并在 `ErrorMsg` 中记录原因。空搜索结果，以及允许为 null 的
+站点和日期元数据仍然有效。
+
+如需验证真实服务，请在测试项目的本机 user-secrets 中配置 `apiKey`，或设置 `DEEPSEEK_API_KEY`，
+然后在仓库根目录运行：
+
+```powershell
+dotnet test test/DeepSeek.IntegrationTests/DeepSeek.IntegrationTests.csproj --configuration Release --filter "Category=SearchFetchLive"
+```
+
+该命令只运行两个 Search/Fetch 在线测试，会产生计费请求，分别验证搜索结果和可用的抓取正文。
+缺少 Key 时会在初始化阶段失败，不会发送请求。日常的 `FullyQualifiedName!~DeepSeekLiveApiTests`
+过滤条件仍会排除全部在线测试。当前结果及配置方法见[验证记录](docs/search-fetch-api-progress.md)。
 
 ### 获取模型列表示例
 

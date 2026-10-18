@@ -32,6 +32,16 @@ public class DeepSeekClient : IDisposable
     public string FilesEndpoint { get; private set; } = "files";
 
     /// <summary>
+    /// DeepSeek standalone Search API endpoint.
+    /// </summary>
+    public string SearchEndpoint { get; private set; } = "v1/tools/search";
+
+    /// <summary>
+    /// DeepSeek standalone Fetch API endpoint.
+    /// </summary>
+    public string FetchEndpoint { get; private set; } = "v1/tools/fetch";
+
+    /// <summary>
     /// list models endpoint
     /// </summary>
     public readonly string ModelsEndpoint = "models";
@@ -118,6 +128,16 @@ public class DeepSeekClient : IDisposable
         FilesEndpoint = endpoint;
     }
 
+    public void SetSearchEndpoint(string endpoint)
+    {
+        SearchEndpoint = endpoint;
+    }
+
+    public void SetFetchEndpoint(string endpoint)
+    {
+        FetchEndpoint = endpoint;
+    }
+
     public async Task<ModelResponse?> ListModelsAsync(CancellationToken cancellationToken)
     {
         using var response = await Http.GetAsync(ModelsEndpoint, cancellationToken);
@@ -130,6 +150,171 @@ public class DeepSeekClient : IDisposable
 
         var content = await response.Content.ReadAsStringAsync();
         return JsonSerializer.Deserialize<ModelResponse>(content, JsonSerializerOptions);
+    }
+
+    /// <summary>
+    /// Searches the web through DeepSeek's standalone Search API.
+    /// </summary>
+    public async Task<SearchResponse?> SearchAsync(
+        SearchRequest request,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateSearchRequest(request);
+        ErrorMsg = null;
+
+        using var content = new StringContent(
+            JsonSerializer.Serialize(request, typeof(SearchRequest), JsonSerializerOptions),
+            Encoding.UTF8,
+            "application/json"
+        );
+
+        using var response = await Http.PostAsync(SearchEndpoint, content, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(cancellationToken);
+            ErrorMsg = response.StatusCode + error;
+            return null;
+        }
+
+        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(responseContent))
+        {
+            ErrorMsg = "empty response";
+            return null;
+        }
+
+        return DeserializeSearchFetchResponse<SearchResponse>(responseContent, "Search", result =>
+            result.Results is not null && result.Results.All(item =>
+                item is not null
+                && item.Title is not null
+                && item.Url is not null
+                && item.Snippet is not null
+                && item.Summary is not null
+                && item.Content is not null
+            )
+        );
+    }
+
+    /// <summary>
+    /// Fetches a web page as Markdown through DeepSeek's standalone Fetch API.
+    /// </summary>
+    public async Task<FetchResponse?> FetchAsync(
+        FetchRequest request,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateFetchRequest(request);
+        ErrorMsg = null;
+
+        using var content = new StringContent(
+            JsonSerializer.Serialize(request, typeof(FetchRequest), JsonSerializerOptions),
+            Encoding.UTF8,
+            "application/json"
+        );
+
+        using var response = await Http.PostAsync(FetchEndpoint, content, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(cancellationToken);
+            ErrorMsg = response.StatusCode + error;
+            return null;
+        }
+
+        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(responseContent))
+        {
+            ErrorMsg = "empty response";
+            return null;
+        }
+
+        return DeserializeSearchFetchResponse<FetchResponse>(responseContent, "Fetch", result =>
+            result.Title is not null && result.Content is not null
+        );
+    }
+
+    private T? DeserializeSearchFetchResponse<T>(string content, string apiName, Func<T, bool> isValid)
+        where T : class
+    {
+        try
+        {
+            var result = JsonSerializer.Deserialize<T>(content, JsonSerializerOptions);
+            if (result is not null && isValid(result))
+            {
+                return result;
+            }
+
+            ErrorMsg = $"invalid {apiName} API response: required data is null";
+        }
+        catch (JsonException exception)
+        {
+            ErrorMsg = $"invalid {apiName} API response: {exception.Message}";
+        }
+
+        return null;
+    }
+
+    private static void ValidateSearchRequest(SearchRequest request)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.Query);
+        ValidateSearchTextLength(request.Query, nameof(request.Query));
+
+        if (request.Count is < 1 or > 50)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request.Count),
+                "DeepSeek Search accepts result counts from 1 to 50."
+            );
+        }
+
+        if (request.OriginalQuestion is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(request.OriginalQuestion);
+            ValidateSearchTextLength(request.OriginalQuestion, nameof(request.OriginalQuestion));
+        }
+    }
+
+    private static void ValidateSearchTextLength(string value, string parameterName)
+    {
+        var length = 0;
+        foreach (var rune in value.EnumerateRunes())
+        {
+            if (++length > 128)
+            {
+                throw new ArgumentException(
+                    "DeepSeek Search accepts text up to 128 Unicode characters.",
+                    parameterName
+                );
+            }
+        }
+    }
+
+    private static void ValidateFetchRequest(FetchRequest request)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.Url);
+
+        if (request.Url.Length > 8192)
+        {
+            throw new ArgumentException(
+                "DeepSeek Fetch accepts URLs up to 8192 characters.",
+                nameof(request.Url)
+            );
+        }
+
+        if (
+            !Uri.TryCreate(request.Url, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            || string.IsNullOrWhiteSpace(uri.Host)
+            || !string.IsNullOrEmpty(uri.UserInfo)
+        )
+        {
+            throw new ArgumentException(
+                "DeepSeek Fetch requires an HTTP or HTTPS URL with a host and no user information.",
+                nameof(request.Url)
+            );
+        }
     }
 
     /// <summary>

@@ -8,8 +8,8 @@
         <Company>Geethin</Company>
         <Description>DeepSeek API SDK for ASP.NET Core with Microsoft.Extensions.AI integration</Description>
         <PackageReleaseNotes>
-            1. Updated the default Flash model ID to deepseek-flash for DeepSeek V4.1-Flash.
-            2. Removed redundant aliases for the experimental Flash vision model constant.
+            1. Added standalone Search and Fetch APIs to the referenced Core package.
+            2. Added request validation and improved handling of invalid Search/Fetch responses.
         </PackageReleaseNotes>
         <PackageProjectUrl>https://github.com/niltor/DeepSeekSDK-NET</PackageProjectUrl>
         <RepositoryUrl>https://github.com/niltor/DeepSeekSDK-NET</RepositoryUrl>
@@ -17,7 +17,7 @@
         <PackageTags>LLM,AI,DeepSeek,API,SDK,AspNetCore,Microsoft.Extensions.AI</PackageTags>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageIcon>logo.jpg</PackageIcon>
-        <Version>1.6.1</Version>
+        <Version>1.6.2</Version>
         <PackageId>Ater.DeepSeek.AspNetCore</PackageId>
         <Title>DeepSeek.AspNetCore</Title>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>

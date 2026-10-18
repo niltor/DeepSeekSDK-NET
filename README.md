@@ -19,6 +19,7 @@
 - [x] Support Microsoft.Extensions.AI IChatClient
 - [x] Multimodal vision model `deepseek-v4-flash-vision-exp`
 - [x] Files API (upload, list, retrieve, and delete images)
+- [x] Standalone Search and Fetch APIs (web search and Markdown page fetch)
 
 ## Usage Requirements
 
@@ -88,6 +89,10 @@ Task<FileObject?> RetrieveFileAsync(string fileId, CancellationToken cancellatio
 Task<FileDeleteResponse?> DeleteFileAsync(string fileId, CancellationToken cancellationToken = default);
 
 Task<UserResponse?> GetUserBalanceAsync(CancellationToken cancellationToken);
+
+Task<SearchResponse?> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default);
+
+Task<FetchResponse?> FetchAsync(FetchRequest request, CancellationToken cancellationToken = default);
 
 ```
 
@@ -203,6 +208,55 @@ DeepSeek's Responses API is stateless. Send the complete input history on each r
 `previous_response_id`, `conversation`, and response storage are not supported. See the
 [official Responses API guide](https://api-docs.deepseek.com/zh-cn/guides/responses_api) and
 [Create Response reference](https://api-docs.deepseek.com/zh-cn/api/create-response) for the supported fields.
+
+### Search and Fetch API
+
+DeepSeek also provides standalone raw JSON endpoints for web search and page retrieval. These calls
+are separate from the OpenAI-compatible Responses API and from `Microsoft.Extensions.AI` tool
+adapters. Search returns ranked structured results; Fetch returns a page title and Markdown content:
+
+```csharp
+var search = await client.SearchAsync(new SearchRequest
+{
+    Query = "DeepSeek API site:api-docs.deepseek.com",
+    Count = 5,
+    OriginalQuestion = "Where is the current DeepSeek API documentation?",
+    NeedContent = true,
+}, cancellationToken);
+
+var firstResult = search?.Results.FirstOrDefault();
+if (firstResult is not null)
+{
+    var page = await client.FetchAsync(
+        new FetchRequest { Url = firstResult.Url },
+        cancellationToken);
+    Console.WriteLine(page?.Content);
+}
+```
+
+Search accepts 1–128 Unicode characters for `Query` and non-null `OriginalQuestion`, `count` from
+1 to 50, and can include result content with `NeedContent`; Fetch accepts
+HTTP or HTTPS URLs up to 8192 characters. Both endpoints use the same Bearer API key and return
+`null` with the response body in `ErrorMsg` when the server returns an error. They are billed per
+successful request by DeepSeek. See the official [Search and Fetch guide](https://api-docs.deepseek.com/guides/search/),
+[Search reference](https://api-docs.deepseek.com/api/search/), and
+[Fetch reference](https://api-docs.deepseek.com/api/fetch/).
+
+Each Search/Fetch request clears the previous `ErrorMsg` after request validation. Malformed JSON,
+missing required response fields, and unexpected null data also return `null` with a diagnostic in
+`ErrorMsg`. Empty search results and nullable site/date metadata remain valid.
+
+To verify these two endpoints against the real service, configure `apiKey` in the test project's
+local user-secrets (or set `DEEPSEEK_API_KEY`), then run the following from the repository root:
+
+```powershell
+dotnet test test/DeepSeek.IntegrationTests/DeepSeek.IntegrationTests.csproj --configuration Release --filter "Category=SearchFetchLive"
+```
+
+This selects only the two Search/Fetch live tests and makes billable requests. The tests check
+ranked search results and usable fetched content; a missing key fails setup before any API call.
+The normal `FullyQualifiedName!~DeepSeekLiveApiTests` filter still excludes all live tests.
+See [verification status and setup](docs/search-fetch-api-progress.md) for the current results.
 
 ### List Models Sample
 
