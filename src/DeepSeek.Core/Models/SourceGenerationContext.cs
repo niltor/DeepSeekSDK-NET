@@ -25,6 +25,11 @@ namespace DeepSeek.Core.Models;
 [JsonSerializable(typeof(FileDeletionResponse))]
 [JsonSerializable(typeof(FileDeleteResponse))]
 [JsonSerializable(typeof(UserResponse))]
+[JsonSerializable(typeof(SearchRequest))]
+[JsonSerializable(typeof(SearchResponse))]
+[JsonSerializable(typeof(SearchResult))]
+[JsonSerializable(typeof(FetchRequest))]
+[JsonSerializable(typeof(FetchResponse))]
 [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
 public partial class SourceGenerationContext : JsonSerializerContext
 {

@@ -59,6 +59,51 @@ public class DeepSeekLiveApiTests : IClassFixture<DeepSeekIntegrationFixture>
     }
 
     [Fact]
+    [Trait("Category", "SearchFetchLive")]
+    public async Task SearchAsync_ReturnsRankedWebResults()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        var response = await _client.SearchAsync(
+            new SearchRequest
+            {
+                Query = "DeepSeek API site:api-docs.deepseek.com",
+                Count = 3,
+                OriginalQuestion = "Where is the DeepSeek API documentation?",
+                NeedContent = true,
+            },
+            timeout.Token
+        );
+
+        Assert.True(response is not null, $"Search API failed: {_client.ErrorMsg}");
+        Assert.NotEmpty(response!.Results);
+        Assert.InRange(response.Results.Count, 1, 3);
+        Assert.All(response.Results, result =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(result.Title));
+            Assert.True(Uri.TryCreate(result.Url, UriKind.Absolute, out var uri));
+            Assert.True(uri!.Scheme is "http" or "https");
+            Assert.InRange(result.RerankScore, 0d, 3d);
+            Assert.InRange(result.Authority, -1, 4);
+        });
+    }
+
+    [Fact]
+    [Trait("Category", "SearchFetchLive")]
+    public async Task FetchAsync_ReturnsMarkdownPage()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        var response = await _client.FetchAsync(
+            new FetchRequest { Url = "https://api-docs.deepseek.com/" },
+            timeout.Token
+        );
+
+        Assert.True(response is not null, $"Fetch API failed: {_client.ErrorMsg}");
+        // The API allows an empty title; usable page content is the acceptance criterion.
+        Assert.False(string.IsNullOrWhiteSpace(response!.Content));
+        Assert.Contains("DeepSeek", response.Content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ListModelsAsync_ReturnsV4Models()
     {
         var response = await _client.ListModelsAsync(_fixture.CreateToken());
